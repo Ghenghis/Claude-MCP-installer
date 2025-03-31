@@ -272,6 +272,24 @@ function startInstallation() {
         installBtn.style.display = 'none';
     }
     
+    
+    // --- Prerequisite Check ---
+    let prerequisiteWarning = null;
+    if (methodId === 'npx') {
+        prerequisiteWarning = 'Ensure Node.js (including npm/npx) is installed and added to your system PATH.';
+    } else if (methodId === 'python') {
+        prerequisiteWarning = 'Ensure Python (including pip) is installed and added to your system PATH.';
+    }
+    
+    if (prerequisiteWarning) {
+        logMessage(`Prerequisite Check for '${methodName}' method:`, 'warning');
+        logMessage(prerequisiteWarning, 'warning');
+        logMessage('Refer to WINDOWS_SETUP.md for installation help.', 'warning');
+        // Add a small delay before proceeding to ensure the message is visible
+        // In a real app, we might pause here or offer a confirmation.
+    }
+    // --- End Prerequisite Check ---
+
     // Start installation
     logMessage(`Starting installation of ${templateName} from ${repoUrl}`, 'info');
     logMessage(`Using method: ${methodName}`, 'info');
