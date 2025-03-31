@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Desktop MCP Advanced Installer for Windows 11</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="installer-icon">
+                <i class="fas fa-server"></i>
+            </div>
+            <h1>Claude Desktop MCP Advanced Installer</h1>
+            <p>Windows 11 x64 Optimized Installation with AI-Assisted Configuration</p>
+        </div>
+        
+        <div class="content">
+            <div class="tab-container">
+                <div class="tab active" data-tab="install">Install Server</div>
+                <div class="tab" data-tab="manage">Server Management</div>
+                <div class="tab" data-tab="logs">Logs & Diagnostics</div>
+                <div class="tab" data-tab="ai">AI Integration</div>
+            </div>
+            
+            <div class="tab-content active" id="install-tab">
+                <div class="form-group">
+                    <label for="installType">Installation Source</label>
+                    <select id="installType">
+                        <option value="template">From Template</option>
+                        <option value="git">Git Repository</option>
+                        <option value="local">Local Package</option>
+                    </select>
+                </div>
+                
+                <div id="template-section">
+                    <h3>Select Server Template</h3>
+                    <p class="info">Choose from our pre-configured MCP templates</p>
+                    
+                    <div class="template-container">
+                        <div class="template-card selected" data-template="basic-api">
+                            <div class="template-title">
+                                <i class="fas fa-star"></i> Basic API Server
+                            </div>
+                            <div class="template-desc">
+                                Simple REST API server with basic CRUD operations.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">512MB RAM</span>
+                                <span class="requirement-badge">1 Core CPU</span>
+                                <span class="requirement-badge">Windows 11</span>
+                            </div>
+                        </div>
+                        
+                        <div class="template-card" data-template="ai">
+                            <div class="template-title">
+                                <i class="fas fa-brain"></i> AI Endpoints
+                            </div>
+                            <div class="template-desc">
+                                Optimized for AI/ML inference endpoints with GPU support.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">4GB RAM</span>
+                                <span class="requirement-badge">GPU</span>
+                                <span class="requirement-badge">Windows 11</span>
+                            </div>
+                        </div>
+                        
+                        <div class="template-card" data-template="database">
+                            <div class="template-title">
+                                <i class="fas fa-database"></i> Database Proxy
+                            </div>
+                            <div class="template-desc">
+                                Pre-configured for database connections and query management.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">2GB RAM</span>
+                                <span class="requirement-badge">Windows 11</span>
+                            </div>
+                        </div>
+                        
+                        <div class="template-card" data-template="iot">
+                            <div class="template-title">
+                                <i class="fas fa-broadcast-tower"></i> IoT Gateway
+                            </div>
+                            <div class="template-desc">
+                                Specialized for IoT device communication and data aggregation.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">1GB RAM</span>
+                                <span class="requirement-badge">Windows 11</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="git-section" style="display:none;">
+                    <div class="form-group">
+                        <label for="repoUrl">GitHub Repository URL</label>
+                        <div class="input-group">
+                            <input type="text" id="repoUrl" placeholder="https://github.com/username/repo.git">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="installMethod">Installation Method</label>
+                    <div class="method-options">
+                        <div class="method-option selected" data-method="npx">
+                            <i class="fab fa-node-js"></i>
+                            <h3>npx</h3>
+                            <p>Fastest method with Node.js</p>
+                        </div>
+                        <div class="method-option" data-method="uv">
+                            <i class="fas fa-bolt"></i>
+                            <h3>uv</h3>
+                            <p>Universal package installer</p>
+                        </div>
+                        <div class="method-option" data-method="python">
+                            <i class="fab fa-python"></i>
+                            <h3>Python</h3>
+                            <p>Works with pip</p>
+                        </div>
+                        <div class="method-option" data-method="docker">
+                            <i class="fab fa-docker"></i>
+                            <h3>Docker</h3>
+                            <p>Containerized deployment</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="installPath">Installation Path</label>
+                    <div class="input-group">
+                        <input type="text" id="installPath" placeholder="C:\Program Files\Claude Desktop MCP">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="serverName">Server Name</label>
+                    <div class="input-group">
+                        <input type="text" id="serverName" placeholder="My MCP Server">
+                        <i class="fas fa-tag"></i>
+                    </div>
+                </div>
+                
+                <div class="advanced-toggle active">
+                    <i class="fas fa-chevron-right"></i> Advanced Configuration
+                </div>
+                
+                <div class="advanced-section active">
+                    <div class="form-group">
+                        <label for="port">Server Port</label>
+                        <div class="input-group">
+                            <input type="number" id="port" placeholder="Default: 8080" value="8080" min="1024" max="49151">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="envVariables">Environment Variables (JSON)</label>
+                        <textarea id="envVariables" rows="4" placeholder='{"KEY": "value", "ANOTHER_KEY": "another_value"}'></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>JSON Configuration Tools</label>
+                        <div class="json-tools">
+                            <button id="backupJsonBtn" class="btn btn-outline">
+                                <i class="fas fa-save"></i> Backup Config
+                            </button>
+                            <button id="fixJsonBtn" class="btn btn-outline">
+                                <i class="fas fa-wrench"></i> Fix JSON Config
+                            </button>
+                            <button id="verifyJsonBtn" class="btn btn-outline">
+                                <i class="fas fa-check-circle"></i> Verify Config
+                            </button>
+                        </div>
+                        <p class="help-text">These tools help manage the Claude Desktop configuration file</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="configOverrides">Configuration Overrides (JSON)</label>
+                        <textarea id="configOverrides" rows="4" placeholder='{"setting": "value", "another_setting": 42}'></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="aiAssistance">
+                            <input type="checkbox" id="aiAssistance" checked> Enable AI-assisted installation
+                        </label>
+                        <p class="help-text">AI will help resolve installation issues automatically</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="aiModel">AI Model</label>
+                        <select id="aiModel">
+                            <option value="gemini">Google Gemini 2.5 Pro</option>
+                            <option value="claude" selected>Claude Sonnet 3.7</option>
+                            <option value="both">Use both models</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <div class="input-group">
+                            <input type="password" id="apiKey" placeholder="Enter your API key">
+                            <i class="fas fa-key"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="installBtn" class="btn">
+                    <i class="fas fa-download"></i> Install & Verify
+                </button>
+                
+                <div class="progress-container" id="progressContainer" style="display: none;">
+                    <div class="progress-title">
+                        <span id="progressStatus">Preparing installation...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                    
+                    <div class="logs" id="logOutput">
+                        <!-- Log messages will appear here -->
+                    </div>
+                </div>
+                
+                <div class="verification-container" id="verificationContainer" style="display: none;">
+                    <div class="verification-header">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Installation Verification</span>
+                    </div>
+                    
+                    <div class="server-controls">
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-server server-running"></i>
+                            </div>
+                            <div class="server-status-value">RUNNING</div>
+                            <div class="server-status-label">Server Status</div>
+                        </div>
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-plug"></i>
+                            </div>
+                            <div class="server-status-value" id="portStatus">8080</div>
+                            <div class="server-status-label">Listening Port</div>
+                        </div>
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-code-branch"></i>
+                            </div>
+                            <div class="server-status-value" id="versionStatus">v1.2.3</div>
+                            <div class="server-status-label">Version</div>
+                        </div>
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="server-status-value" id="uptimeStatus">00:05:32</div>
+                            <div class="server-status-label">Uptime</div>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-details" id="verificationDetails">
+                        <div class="status-check">
+                            <span class="status-label">Health Check:</span>
+                            <span id="healthCheckStatus" class="status-value status-success">PASSED</span>
+                        </div>
+                        <div class="status-check">
+                            <span class="status-label">API Endpoints:</span>
+                            <span id="apiStatus" class="status-value status-success">5/5 AVAILABLE</span>
+                        </div>
+                        <div class="status-check">
+                            <span class="status-label">Dependencies:</span>
+                            <span id="depsStatus" class="status-value status-success">ALL SATISFIED</span>
+                        </div>
+                        <div class="status-check">
+                            <span class="status-label">Resources:</span>
+                            <span id="resourcesStatus" class="status-value status-success">
+                                CPU: 12% | MEM: 450MB/2GB
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button id="restartServerBtn" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> Restart
+                        </button>
+                        <button id="stopServerBtn" class="btn btn-danger">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button id="backupServerBtn" class="btn btn-success">
+                            <i class="fas fa-save"></i> Backup
+                        </button>
+                        <button id="configureServerBtn" class="btn btn-secondary">
+                            <i class="fas fa-cog"></i> Configure
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="manage-tab">
+                <h3>Server Management Dashboard</h3>
+                <p>Manage your installed MCP server instances</p>
+                
+                <div class="form-group">
+                    <label for="managedServer">Select Server</label>
+                    <select id="managedServer">
+                        <option value="1">My MCP Server (Running)</option>
+                        <option value="2">Staging Server (Stopped)</option>
+                        <option value="3">Development Instance (Running)</option>
+                    </select>
+                </div>
+                
+                <div class="server-controls">
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-server server-running"></i>
+                        </div>
+                        <div class="server-status-value">RUNNING</div>
+                        <div class="server-status-label">Status</div>
+                    </div>
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="server-status-value">8080</div>
+                        <div class="server-status-label">Port</div>
+                    </div>
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                        <div class="server-status-value">v1.2.3</div>
+                        <div class="server-status-label">Version</div>
+                    </div>
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="server-status-value">2d 4h 15m</div>
+                        <div class="server-status-label">Uptime</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Server Actions</label>
+                    <div class="btn-group">
+                        <button class="btn btn-success">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="btn btn-warning">
+                            <i class="fas fa-redo"></i> Restart
+                        </button>
+                        <button class="btn btn-danger">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="logs-tab">
+                <h3>Server Logs & Diagnostics</h3>
+                <p>Inspect server activity and troubleshoot issues</p>
+                
+                <div class="form-group">
+                    <label for="logType">Log Type</label>
+                    <select id="logType">
+                        <option value="install">Installation Logs</option>
+                        <option value="server" selected>Server Runtime Logs</option>
+                        <option value="access">Access Logs</option>
+                        <option value="error">Error Logs</option>
+                        <option value="debug">Debug Logs</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Log Filters</label>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary active">
+                            <i class="fas fa-list"></i> All
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-info-circle"></i> Info
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-exclamation-triangle"></i> Warnings
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-times-circle"></i> Errors
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="logs" style="height: 300px;">
+                    <div class="log-message info">
+                        [2025-03-31 02:32:10] INFO: Server started on port 8080
+                    </div>
+                    <div class="log-message info">
+                        [2025-03-31 02:32:12] INFO: Connected to database
+                    </div>
+                    <div class="log-message">
+                        [2025-03-31 02:33:45] GET /api/status 200 12ms
+                    </div>
+                    <div class="log-message warning">
+                        [2025-03-31 02:34:22] WARNING: High memory usage detected (85%)
+                    </div>
+                    <div class="log-message">
+                        [2025-03-31 02:35:10] POST /api/data 201 42ms
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="ai-tab">
+                <h3>AI Integration</h3>
+                <p>Configure AI models to assist with installation and troubleshooting</p>
+                
+                <div class="form-group">
+                    <label for="geminiApiKey">Google Gemini 2.5 Pro API Key</label>
+                    <div class="input-group">
+                        <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key">
+                        <i class="fas fa-key"></i>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="claudeApiKey">Claude Sonnet 3.7 API Key</label>
+                    <div class="input-group">
+                        <input type="password" id="claudeApiKey" placeholder="Enter your Claude API key">
+                        <i class="fas fa-key"></i>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>AI Capabilities</label>
+                    <div class="capability-list">
+                        <div class="capability-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Automatic error resolution during installation</span>
+                        </div>
+                        <div class="capability-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>GitHub README parsing and implementation</span>
+                        </div>
+                        <div class="capability-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Dependency conflict resolution</span>
+                        </div>
+                        <div class="capability-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Configuration optimization for Windows 11</span>
+                        </div>
+                        <div class="capability-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Troubleshooting assistance</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success">
+                    <i class="fas fa-save"></i> Save AI Configuration
+                </button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Claude Desktop MCP Installer for Windows 11 &copy; 2025 | Optimized for Windows 11 x64</p>
+            <div id="status-indicator" class="status-indicator">
+                <span class="status-dot offline"></span>
+                <span class="status-text">Offline</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/ui-controller.js"></script>
+    <script src="js/template-manager.js"></script>
+    <script src="js/installation-manager.js"></script>
+    <script src="js/server-controller.js"></script>
+    <script src="js/logger.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/installer-ui.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs and tab contents
+                    tabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Advanced toggle
+            const advancedToggle = document.querySelector('.advanced-toggle');
+            if (advancedToggle) {
+                advancedToggle.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const advancedSection = document.querySelector('.advanced-section');
+                    if (advancedSection) {
+                        advancedSection.classList.toggle('active');
+                    }
+                });
+            }
+            
+            // Template selection
+            const templateCards = document.querySelectorAll('.template-card');
+            templateCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    templateCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+            
+            // Installation method selection
+            const methodOptions = document.querySelectorAll('.method-option');
+            methodOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    methodOptions.forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+            
+            // Install button
+            const installBtn = document.getElementById('installBtn');
+            if (installBtn) {
+                installBtn.addEventListener('click', function() {
+                    const progressContainer = document.getElementById('progressContainer');
+                    if (progressContainer) {
+                        progressContainer.style.display = 'block';
+                    }
+                    
+                    this.style.display = 'none';
+                    
+                    // Simulate installation progress
+                    let progress = 0;
+                    const progressBar = document.getElementById('progressBar');
+                    const progressPercent = document.getElementById('progressPercent');
+                    const progressStatus = document.getElementById('progressStatus');
+                    const logOutput = document.getElementById('logOutput');
+                    
+                    function addLog(message, type = '') {
+                        const logElement = document.createElement('div');
+                        logElement.className = `log-message ${type}`;
+                        logElement.textContent = message;
+                        logOutput.appendChild(logElement);
+                        logOutput.scrollTop = logOutput.scrollHeight;
+                    }
+                    
+                    addLog('Starting installation...', 'info');
+                    
+                    const interval = setInterval(() => {
+                        progress += 5;
+                        
+                        if (progressBar) progressBar.style.width = `${progress}%`;
+                        if (progressPercent) progressPercent.textContent = `${progress}%`;
+                        
+                        if (progress === 20) {
+                            if (progressStatus) progressStatus.textContent = 'Downloading dependencies...';
+                            addLog('Downloading dependencies...', 'info');
+                        } else if (progress === 40) {
+                            if (progressStatus) progressStatus.textContent = 'Installing packages...';
+                            addLog('Installing packages...', 'info');
+                        } else if (progress === 60) {
+                            if (progressStatus) progressStatus.textContent = 'Configuring server...';
+                            addLog('Configuring server...', 'info');
+                        } else if (progress === 80) {
+                            if (progressStatus) progressStatus.textContent = 'Starting server...';
+                            addLog('Starting server...', 'info');
+                        } else if (progress === 100) {
+                            if (progressStatus) progressStatus.textContent = 'Installation complete!';
+                            addLog('Installation complete!', 'success');
+                            
+                            clearInterval(interval);
+                            
+                            // Show verification container
+                            const verificationContainer = document.getElementById('verificationContainer');
+                            if (verificationContainer) {
+                                setTimeout(() => {
+                                    verificationContainer.style.display = 'block';
+                                }, 1000);
+                            }
+                        }
+                    }, 500);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

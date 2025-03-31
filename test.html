@@ -1,0 +1,3005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Desktop MCP Installer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2E86AB;
+            --secondary: #F18F01;
+            --dark: #333;
+            --light: #f9f9f9;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #fd7e14;
+            --info: #17a2b8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 800px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-weight: 600;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .installer-icon {
+            position: absolute;
+            top: -20px;
+            right: 20px;
+            background: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .installer-icon i {
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .input-group {
+            position: relative;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.2);
+        }
+        
+        .input-group i {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+        
+        .method-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .method-option {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .method-option:hover {
+            border-color: var(--primary);
+        }
+        
+        .method-option.selected {
+            border-color: var(--primary);
+            background-color: rgba(46, 134, 171, 0.05);
+        }
+        
+        .method-option i {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+        
+        .method-option h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            color: var(--dark);
+        }
+        
+        .method-option p {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .template-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .template-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .template-card.selected {
+            border-color: var(--primary);
+            background-color: rgba(46, 134, 171, 0.05);
+        }
+        
+        .template-card img {
+            max-width: 100%;
+            height: 80px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+        
+        .template-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .template-card p {
+            font-size: 0.7rem;
+            color: #777;
+        }
+        
+        .template-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 2px 8px;
+            font-size: 0.6rem;
+            color: white;
+            border-bottom-left-radius: 8px;
+        }
+        
+        .template-badge.beginner {
+            background-color: var(--success);
+        }
+        
+        .template-badge.intermediate {
+            background-color: var(--warning);
+        }
+        
+        .template-badge.advanced {
+            background-color: var(--danger);
+        }
+        
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #246e8c;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .mode-switch {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+        
+        .switch-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .switch-label span {
+            margin-left: 5px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        
+        .advanced-options {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        
+        .advanced-options h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: var(--dark);
+        }
+        
+        .tab-container {
+            margin-bottom: 15px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        
+        .tab-btn {
+            padding: 8px 15px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #777;
+        }
+        
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+        
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .progress-container {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .progress-title {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 5px;
+        }
+        
+        .logs {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            color: #333;
+        }
+        
+        .log-message {
+            margin-bottom: 5px;
+            padding: 2px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .success {
+            color: var(--success);
+        }
+        
+        .error {
+            color: var(--danger);
+        }
+        
+        .warning {
+            color: var(--warning);
+        }
+        
+        .info {
+            color: var(--info);
+        }
+        
+        .verification-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        
+        .verification-panel h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: var(--dark);
+        }
+        
+        .verification-steps {
+            list-style: none;
+        }
+        
+        .verification-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        .verification-step i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .verification-step.pending i {
+            color: #aaa;
+        }
+        
+        .verification-step.running i {
+            color: var(--warning);
+        }
+        
+        .verification-step.success i {
+            color: var(--success);
+        }
+        
+        .verification-step.failure i {
+            color: var(--danger);
+        }
+        
+        .verification-step-content {
+            flex-grow: 1;
+        }
+        
+        .verification-step-title {
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+        
+        .verification-step-description {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        
+        .verification-actions {
+            margin-top: 15px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .verification-actions button {
+            margin-left: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.8rem;
+            color: #777;
+            border-top: 1px solid #eee;
+        }
+        
+        .accordion {
+            margin-bottom: 10px;
+        }
+        
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .accordion-header:hover {
+            background-color: #eee;
+        }
+        
+        .accordion-title {
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .accordion-icon {
+            transition: transform 0.3s;
+        }
+        
+        .accordion-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .accordion.active .accordion-header {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        
+        .accordion.active .accordion-icon {
+            transform: rotate(180deg);
+        }
+        
+        .accordion.active .accordion-content {
+            display: block;
+        }
+        
+        /* Control panel for post-installation */
+        .control-panel {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .control-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .control-panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .control-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .control-btn i {
+            margin-right: 5px;
+        }
+        
+        .control-btn-start {
+            background-color: var(--success);
+            color: white;
+            border: none;
+        }
+        
+        .control-btn-stop {
+            background-color: var(--danger);
+            color: white;
+            border: none;
+        }
+        
+        .control-btn-restart {
+            background-color: var(--warning);
+            color: white;
+            border: none;
+        }
+        
+        .control-panel-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .control-card {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: white;
+        }
+        
+        .control-card h4 {
+            margin-bottom: 10px;
+            font-size: 1rem;
+            color: var(--dark);
+        }
+        
+        .server-info {
+            list-style: none;
+        }
+        
+        .server-info li {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .server-info-label {
+            font-weight: 500;
+            color: #777;
+        }
+        
+        .server-info-value {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-running {
+            background-color: var(--success);
+        }
+        
+        .status-stopped {
+            background-color: var(--danger);
+        }
+        
+        .status-warning {
+            background-color: var(--warning);
+        }
+        
+        @media (max-width: 768px) {
+            .template-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+            
+            .method-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 500px) {
+            .header h1 {
+                font-size: 1.5rem;
+                margin-bottom: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .template-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="installer-icon">
+                <i class="fas fa-download"></i>
+            </div>
+            <h1>Claude Desktop MCP Installer</h1>
+            <p>Install and configure MCP packages with comprehensive verification</p>
+        </div>
+        
+        <div class="content">
+            <div class="mode-switch">
+                <label class="switch-label">
+                    <span>Normal</span>
+                    <div class="switch" style="margin: 0 10px;">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                    </div>
+                    <span>Advanced</span>
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label for="repoUrl">GitHub Repository URL</label>
+                <div class="input-group">
+                    <input type="text" id="repoUrl" placeholder="https://github.com/username/repo.git">
+                    <i class="fas fa-code-branch"></i>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>MCP Server Template</label>
+                <div class="template-grid">
+                    <div class="template-card" data-template="basic-api">
+                        <div class="template-badge beginner">Beginner</div>
+                        <img src="https://via.placeholder.com/150?text=API+Server" alt="Basic API Server">
+                        <h3>Basic API Server</h3>
+                        <p>Simple REST API server with basic CRUD operations</p>
+                    </div>
+                    <div class="template-card" data-template="web-dashboard">
+                        <div class="template-badge beginner">Beginner</div>
+                        <img src="https://via.placeholder.com/150?text=Web+Dashboard" alt="Web Dashboard">
+                        <h3>Web Dashboard</h3>
+                        <p>Admin dashboard with user management</p>
+                    </div>
+                    <div class="template-card" data-template="data-processor">
+                        <div class="template-badge intermediate">Intermediate</div>
+                        <img src="https://via.placeholder.com/150?text=Data+Processor" alt="Data Processor">
+                        <h3>Data Processor</h3>
+                        <p>Background processing with task queue</p>
+                    </div>
+                    <div class="template-card" data-template="media-server">
+                        <div class="template-badge intermediate">Intermediate</div>
+                        <img src="https://via.placeholder.com/150?text=Media+Server" alt="Media Server">
+                        <h3>Media Server</h3>
+                        <p>File storage and streaming capabilities</p>
+                    </div>
+                    <div class="template-card" data-template="ml-inference">
+                        <div class="template-badge advanced">Advanced</div>
+                        <img src="https://via.placeholder.com/150?text=ML+Inference" alt="ML Inference">
+                        <h3>ML Inference</h3>
+                        <p>Machine learning model deployment</p>
+                    </div>
+                    <div class="template-card" data-template="full-stack">
+                        <div class="template-badge advanced">Advanced</div>
+                        <img src="https://via.placeholder.com/150?text=Full+Stack" alt="Full Stack">
+                        <h3>Full Stack</h3>
+                        <p>Complete application with frontend and backend</p>
+                    </div>
+                </div>
+            </div>
+            
+            <label>Installation Method</label>
+            <div class="method-options">
+                <div class="method-option" data-method="npx">
+                    <i class="fab fa-node-js"></i>
+                    <h3>npx</h3>
+                    <p>Fastest method with Node.js</p>
+                </div>
+                <div class="method-option" data-method="uv">
+                    <i class="fas fa-bolt"></i>
+                    <h3>uv</h3>
+                    <p>Universal package installer</p>
+                </div>
+                <div class="method-option" data-method="python">
+                    <i class="fab fa-python"></i>
+                    <h3>Python</h3>
+                    <p>Works with pip</p>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="installPath">Installation Path (optional)</label>
+                <div class="input-group">
+                    <input type="text" id="installPath" placeholder="/path/to/install">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+            </div>
+            
+            <!-- Advanced Options (hidden by default) -->
+            <div class="advanced-options" id="advancedOptions">
+                <h3>Advanced Configuration</h3>
+                
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="network">Network</button>
+                        <button class="tab-btn" data-tab="environment">Environment</button>
+                        <button class="tab-btn" data-tab="storage">Storage</button>
+                        <button class="tab-btn" data-tab="security">Security</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="network-tab">
+                        <div class="form-group">
+                            <label for="serverPort">Server Port</label>
+                            <input type="number" id="serverPort" value="3000" min="0" max="65535">
+                        </div>
+                        <div class="form-group">
+                            <label for="enableSSL">
+                                <input type="checkbox" id="enableSSL"> Enable SSL/TLS
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="corsOrigin">CORS Allowed Origins</label>
+                            <input type="text" id="corsOrigin" placeholder="*">
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="environment-tab">
+                        <div class="form-group">
+                            <label for="nodeEnv">Node Environment</label>
+                            <select id="nodeEnv">
+                                <option value="development">Development</option>
+                                <option value="production">Production</option>
+                                <option value="testing">Testing</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="logLevel">Log Level</label>
+                            <select id="logLevel">
+                                <option value="error">Error</option>
+                                <option value="warn">Warning</option>
+                                <option value="info" selected>Info</option>
+                                <option value="debug">Debug</option>
+                            </select>
+                        </div>
+                        <div class="accordion">
+                            <div class="accordion-header">
+                                <div class="accordion-title">Custom Environment Variables</div>
+                                <div class="accordion-icon"><i class="fas fa-chevron-down"></i></div>
+                            </div>
+                            <div class="accordion-content">
+                                <div id="envVars">
+                                    <div class="form-group">
+                                        <div class="input-group" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                            <input type="text" placeholder="KEY" style="flex: 1;">
+                                            <input type="text" placeholder="VALUE" style="flex: 1;">
+                                            <button class="btn" style="width: auto; margin-top: 0;"><i class="fas fa-plus"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="storage-tab">
+                        <div class="form-group">
+                            <label for="dataDir">Data Directory</label>
+                            <input type="text" id="dataDir" placeholder="/path/to/data">
+                        </div>
+                        <div class="form-group">
+                            <label for="enablePersistence">
+                                <input type="checkbox" id="enablePersistence" checked> Enable Data Persistence
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="backupInterval">Backup Interval (hours)</label>
+                            <input type="number" id="backupInterval" value="24" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="security-tab">
+                        <div class="form-group">
+                            <label for="authType">Authentication Type</label>
+                            <select id="authType">
+                                <option value="none">None</option>
+                                <option value="basic">Basic Auth</option>
+                                <option value="jwt" selected>JWT</option>
+                                <option value="oauth">OAuth</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="jwtSecret">JWT Secret (if applicable)</label>
+                            <input type="text" id="jwtSecret" placeholder="Generate a strong secret">
+                            <button class="btn btn-outline" style="width: auto; margin-top: 5px;" id="generateSecret">Generate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="installBtn" class="btn">
+                <i class="fas fa-magic"></i> Install MCP Server
+            </button>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-title">
+                    <span id="progressStatus">Preparing installation...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                
+                <div class="logs" id="logOutput">
+                    <!-- Log messages will appear here -->
+                </div>
+            </div>
+            
+            <!-- Verification Panel (hidden by default) -->
+            <div class="verification-panel" id="verificationPanel">
+                <h3>Installation Verification</h3>
+                
+                <ul class="verification-steps">
+                    <li class="verification-step pending" id="verify-server">
+                        <i class="fas fa-circle-notch"></i>
+                        <div class="verification-step-content">
+                            <div class="verification-step-title">Server Status Check</div>
+                            <div class="verification-step-description">Verifying MCP server is running properly</div>
+                        </div>
+                    </li>
+                    <li class="verification-step pending" id="verify-port">
+                        <i class="fas fa-circle-notch"></i>
+                        <div class="verification-step-content">
+                            <div class="verification-step-title">Port Accessibility</div>
+                            <div class="verification-step-description">Checking if server port is accessible</div>
+                        </div>
+                    </li>
+                    <li class="verification-step pending" id="verify-api">
+                        <i class="fas fa-circle-notch"></i>
+                        <div class="verification-step-content">
+                            <div class="verification-step-title">API Health Check</div>
+                            <div class="verification-step-description">Testing API endpoints functionality</div>
+                        </div>
+                    </li>
+                    <li class="verification-step pending" id="verify-version">
+                        <i class="fas fa-circle-notch"></i>
+                        <div class="verification-step-content">
+                            <div class="verification-step-title">Version Verification</div>
+                            <div class="verification-step-description">Confirming installed version matches requested</div>
+                        </div>
+                    </li>
+                </ul>
+                
+                <div class="verification-actions">
+                    <button class="btn btn-outline" id="retryVerificationBtn">
+                        <i class="fas fa-redo"></i> Retry
+                    </button>
+                    <button class="btn" id="continueBtn">
+                        <i class="fas fa-check"></i> Continue
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Control Panel (hidden by default, shown after successful installation) -->
+            <div class="control-panel" id="controlPanel">
+                <div class="control-panel-header">
+                    <div class="control-panel-title">
+                        <i class="fas fa-server mr-2"></i> MCP Server Control Panel
+                    </div>
+                    <div class="control-actions">
+                        <button class="control-btn control-btn-start" id="startServerBtn">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="control-btn control-btn-stop" id="stopServerBtn">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="control-btn control-btn-restart" id="restartServerBtn">
+                            <i class="fas fa-sync"></i> Restart
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-panel-content">
+                    <div class="control-card">
+                        <h4>Server Information</h4>
+                        <ul class="server-info">
+                            <li>
+                                <span class="server-info-label">Status:</span>
+                                <span class="server-info-value">
+                                    <span class="status-indicator status-running"></span> Running
+                                </span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">Version:</span>
+                                <span class="server-info-value" id="serverVersion">1.0.0</span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">Uptime:</span>
+                                <span class="server-info-value" id="serverUptime">00:05:42</span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">Port:</span>
+                                <span class="server-info-value" id="serverPortDisplay">3000</span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">URL:</span>
+                                <span class="server-info-value">
+                                    <a href="#" id="serverUrl">http://localhost:3000</a>
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="control-card">
+                        <h4>Resource Usage</h4>
+                        <ul class="server-info">
+                            <li>
+                                <span class="server-info-label">CPU:</span>
+                                <span class="server-info-value" id="cpuUsage">2.4%</span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">Memory:</span>
+                                <span class="server-info-value" id="memoryUsage">128MB / 512MB</span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">Disk:</span>
+                                <span class="server-info-value" id="diskUsage">245MB / 10GB</span>
+                            </li>
+                            <li>
+                                <span class="server-info-label">Network:</span>
+                                <span class="server-info-value" id="networkUsage">1.2 MB/s</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Claude Desktop MCP Installer &copy; 2025 | Ensure you trust the repository before installing</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mode toggle (Normal/Advanced)
+            const modeToggle = document.getElementById('modeToggle');
+            const advancedOptions = document.getElementById('advancedOptions');
+            
+            modeToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    advancedOptions.style.display = 'block';
+                } else {
+                    advancedOptions.style.display = 'none';
+                }
+            });
+            
+            // Tab switching in advanced options
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active class from all buttons and contents
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding content
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Accordion functionality
+            const accordions = document.querySelectorAll('.accordion');
+            
+            accordions.forEach(accordion => {
+                const header = accordion.querySelector('.accordion-header');
+                
+                header.addEventListener('click', function() {
+                    accordion.classList.toggle('active');
+                });
+            });
+            
+            // Template selection
+            const templateCards = document.querySelectorAll('.template-card');
+            let selectedTemplate = null;
+            
+            templateCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    templateCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedTemplate = this.getAttribute('data-template');
+                    logMessage(`Selected template: ${this.querySelector('h3').textContent}`, 'success');
+                });
+            });
+            
+            // Installation method selection
+            const methodOptions = document.querySelectorAll('.method-option');
+            let selectedMethod = 'npx'; // default
+            
+            methodOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    methodOptions.forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedMethod = this.getAttribute('data-method');
+                    logMessage(`Selected installation method: ${selectedMethod.toUpperCase()}`, 'success');
+                });
+            });
+            
+            // Select the first method by default
+            if (methodOptions.length > 0) {
+                methodOptions[0].classList.add('selected');
+            }
+            
+            // Generate JWT secret
+            document.getElementById('generateSecret').addEventListener('click', function() {
+                const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+                let secret = '';
+                for (let i = 0; i < 32; i++) {
+                    secret += characters.charAt(Math.floor(Math.random() * characters.length));
+                }
+                document.getElementById('jwtSecret').value = secret;
+            });
+            
+            // Install button click handler
+            document.getElementById('installBtn').addEventListener('click', function() {
+                const repoUrl = document.getElementById('repoUrl').value.trim();
+                const installPath = document.getElementById('installPath').value.trim();
+                
+                if (!repoUrl) {
+                    logMessage('Please enter a GitHub repository URL', 'error');
+                    return;
+                }
+                
+                if (!selectedTemplate) {
+                    logMessage('Please select a server template', 'error');
+                    return;
+                }
+                
+                if (!isValidGitHubUrl(repoUrl)) {
+                    logMessage('Please enter a valid GitHub .git URL', 'error');
+                    return;
+                }
+                
+                // Show progress container
+                document.getElementById('progressContainer').style.display = 'block';
+                
+                // Hide install button during installation
+                document.getElementById('installBtn').style.display = 'none';
+                
+                // Start installation process
+                startInstallation(repoUrl, selectedMethod, installPath, selectedTemplate);
+            });
+            
+            // Verification panel controls
+            document.getElementById('retryVerificationBtn').addEventListener('click', function() {
+                startVerification();
+            });
+            
+            document.getElementById('continueBtn').addEventListener('click', function() {
+                document.getElementById('verificationPanel').style.display = 'none';
+                document.getElementById('controlPanel').style.display = 'block';
+                
+                // Start resource monitoring
+                startResourceMonitoring();
+            });
+            
+            // Server control buttons
+            document.getElementById('startServerBtn').addEventListener('click', function() {
+                logMessage('Starting MCP server...', 'info');
+                setTimeout(() => {
+                    logMessage('MCP server started successfully', 'success');
+                    updateServerStatus('running');
+                }, 1000);
+            });
+            
+            document.getElementById('stopServerBtn').addEventListener('click', function() {
+                logMessage('Stopping MCP server...', 'info');
+                setTimeout(() => {
+                    logMessage('MCP server stopped', 'warning');
+                    updateServerStatus('stopped');
+                }, 1000);
+            });
+            
+            document.getElementById('restartServerBtn').addEventListener('click', function() {
+                logMessage('Restarting MCP server...', 'info');
+                setTimeout(() => {
+                    logMessage('MCP server restarted successfully', 'success');
+                    updateServerStatus('running');
+                }, 2000);
+            });
+            
+            function isValidGitHubUrl(url) {
+                return /^(https?:\/\/)?(www\.)?github\.com\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+(\.git)?$/i.test(url);
+            }
+            
+            function logMessage(message, type = '') {
+                const logOutput = document.getElementById('logOutput');
+                const logElement = document.createElement('div');
+                logElement.className = `log-message ${type}`;
+                logElement.textContent = message;
+                logOutput.appendChild(logElement);
+                logOutput.scrollTop = logOutput.scrollHeight;
+                
+                // Update progress status for important messages
+                if (type === 'success' || type === 'error' || type === 'info') {
+                    document.getElementById('progressStatus').textContent = message;
+                }
+            }
+            
+            function startInstallation(repoUrl, method, path, template) {
+                logMessage(`Starting installation of ${template} template from: ${repoUrl}`, 'success');
+                logMessage(`Using method: ${method.toUpperCase()}`);
+                if (path) {
+                    logMessage(`Installation path: ${path}`);
+                }
+                
+                // Simulate installation progress
+                simulateProgress(method, template, () => {
+                    logMessage(`Installation completed successfully using ${method.toUpperCase()}!`, 'success');
+                    
+                    // Show verification panel
+                    document.getElementById('verificationPanel').style.display = 'block';
+                    
+                    // Start verification process
+                    startVerification();
+                });
+            }
+            
+            function simulateProgress(method, template, callback) {
+                let progress = 0;
+                const progressBar = document.getElementById('progressBar');
+                const progressPercent = document.getElementById('progressPercent');
+                
+                const steps = {
+                    'npx': ['Cloning repository', 'Installing dependencies', 'Building package', 'Finalizing installation'],
+                    'uv': ['Initializing UV installer', 'Fetching repository', 'Validating package', 'Installing components'],
+                    'python': ['Setting up Python environment', 'Installing dependencies', 'Running setup.py', 'Completing installation']
+                };
+                
+                const templateSpecificLogs = {
+                    'basic-api': [
+                        'Setting up Express server',
+                        'Configuring RESTful routes',
+                        'Setting up MongoDB connection',
+                        'Initializing Swagger documentation'
+                    ],
+                    'web-dashboard': [
+                        'Installing frontend dependencies',
+                        'Building React components',
+                        'Setting up authentication system',
+                        'Configuring user dashboard'
+                    ],
+                    'data-processor': [
+                        'Setting up worker processes',
+                        'Configuring message queue',
+                        'Setting up data connectors',
+                        'Initializing processing pipelines'
+                    ],
+                    'media-server': [
+                        'Setting up storage system',
+                        'Configuring streaming capabilities',
+                        'Setting up transcoding services',
+                        'Initializing CDN integration'
+                    ],
+                    'ml-inference': [
+                        'Setting up Python environment',
+                        'Installing ML dependencies',
+                        'Loading pre-trained models',
+                        'Setting up inference API'
+                    ],
+                    'full-stack': [
+                        'Setting up frontend application',
+                        'Configuring backend services',
+                        'Setting up database connections',
+                        'Initializing authentication system'
+                    ]
+                };
+                
+                const interval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress > 100) progress = 100;
+                    
+                    progressBar.style.width = `${progress}%`;
+                    progressPercent.textContent = `${Math.floor(progress)}%`;
+                    
+                    // Update status messages at different progress levels
+                    if (progress < 25) {
+                        document.getElementById('progressStatus').textContent = steps[method][0];
+                    } else if (progress < 50) {
+                        document.getElementById('progressStatus').textContent = steps[method][1];
+                    } else if (progress < 75) {
+                        document.getElementById('progressStatus').textContent = steps[method][2];
+                    } else {
+                        document.getElementById('progressStatus').textContent = steps[method][3];
+                    }
+                    
+                    // Random log messages
+                    if (Math.random() > 0.7 && progress < 95) {
+                        // General logs
+                        const randomMsgs = {
+                            'npx': ['Fetching npm packages', 'Running build scripts', 'Optimizing dependencies'],
+                            'uv': ['Verifying package integrity', 'Downloading components', 'Setting up environment'],
+                            'python': ['Running pip install', 'Compiling Python modules', 'Creating virtual environment']
+                        };
+                        
+                        // Decide whether to show general logs or template-specific logs
+                        if (Math.random() > 0.5) {
+                            const randomMsg = randomMsgs[method][Math.floor(Math.random() * randomMsgs[method].length)];
+                            logMessage(randomMsg + '...', 'info');
+                        } else {
+                            const templateMsg = templateSpecificLogs[template][Math.floor(Math.random() * templateSpecificLogs[template].length)];
+                            logMessage(templateMsg + '...', 'info');
+                        }
+                    }
+                    
+                    if (progress === 100) {
+                        clearInterval(interval);
+                        setTimeout(callback, 800);
+                    }
+                }, 300);
+            }
+            
+            function startVerification() {
+                // Reset verification steps
+                document.querySelectorAll('.verification-step').forEach(step => {
+                    step.className = 'verification-step pending';
+                    step.querySelector('i').className = 'fas fa-circle-notch';
+                });
+                
+                // Server status check
+                updateVerificationStep('verify-server', 'running', 'Checking server status...');
+                setTimeout(() => {
+                    updateVerificationStep('verify-server', 'success', 'Server is running properly');
+                    
+                    // Port check
+                    updateVerificationStep('verify-port', 'running', 'Checking port accessibility...');
+                    setTimeout(() => {
+                        updateVerificationStep('verify-port', 'success', 'Port is accessible');
+                        
+                        // API health check
+                        updateVerificationStep('verify-api', 'running', 'Testing API endpoints...');
+                        setTimeout(() => {
+                            updateVerificationStep('verify-api', 'success', 'API endpoints are working correctly');
+                            
+                            // Version verification
+                            updateVerificationStep('verify-version', 'running', 'Verifying version...');
+                            setTimeout(() => {
+                                updateVerificationStep('verify-version', 'success', 'Version matches requested version');
+                                
+                                logMessage('All verification checks passed successfully!', 'success');
+                            }, 1500);
+                        }, 2000);
+                    }, 1500);
+                }, 1500);
+            }
+            
+            function updateVerificationStep(stepId, status, message) {
+                const step = document.getElementById(stepId);
+                const icon = step.querySelector('i');
+                const description = step.querySelector('.verification-step-description');
+                
+                // Update class and icon based on status
+                switch (status) {
+                    case 'pending':
+                        step.className = 'verification-step pending';
+                        icon.className = 'fas fa-circle-notch';
+                        break;
+                    case 'running':
+                        step.className = 'verification-step running';
+                        icon.className = 'fas fa-spinner fa-spin';
+                        break;
+                    case 'success':
+                        step.className = 'verification-step success';
+                        icon.className = 'fas fa-check-circle';
+                        break;
+                    case 'failure':
+                        step.className = 'verification-step failure';
+                        icon.className = 'fas fa-times-circle';
+                        break;
+                }
+                
+                // Update description if provided
+                if (message) {
+                    description.textContent = message;
+                }
+            }
+            
+            function updateServerStatus(status) {
+                const statusIndicator = document.querySelector('.status-indicator');
+                const statusText = document.querySelector('.server-info li:first-child .server-info-value');
+                
+                if (status === 'running') {
+                    statusIndicator.className = 'status-indicator status-running';
+                    statusText.innerHTML = '<span class="status-indicator status-running"></span> Running';
+                } else if (status === 'stopped') {
+                    statusIndicator.className = 'status-indicator status-stopped';
+                    statusText.innerHTML = '<span class="status-indicator status-stopped"></span> Stopped';
+                } else if (status === 'warning') {
+                    statusIndicator.className = 'status-indicator status-warning';
+                    statusText.innerHTML = '<span class="status-indicator status-warning"></span> Warning';
+                }
+            }
+            
+            function startResourceMonitoring() {
+                // Simulate resource monitoring with random values
+                setInterval(() => {
+                    const cpuUsage = (Math.random() * 5 + 1).toFixed(1);
+                    const memoryUsed = Math.floor(Math.random() * 100 + 100);
+                    const diskUsed = Math.floor(Math.random() * 100 + 200);
+                    const networkSpeed = (Math.random() * 2).toFixed(1);
+                    
+                    document.getElementById('cpuUsage').textContent = `${cpuUsage}%`;
+                    document.getElementById('memoryUsage').textContent = `${memoryUsed}MB / 512MB`;
+                    document.getElementById('diskUsage').textContent = `${diskUsed}MB / 10GB`;
+                    document.getElementById('networkUsage').textContent = `${networkSpeed} MB/s`;
+                    
+                    // Update server port display from the actual server port input
+                    const serverPortInput = document.getElementById('serverPort');
+                    if (serverPortInput) {
+                        document.getElementById('serverPortDisplay').textContent = serverPortInput.value || '3000';
+                    }
+                    
+                    // Update uptime
+                    const uptime = document.getElementById('serverUptime').textContent;
+                    const [hours, minutes, seconds] = uptime.split(':').map(Number);
+                    let newSeconds = seconds + 5;
+                    let newMinutes = minutes;
+                    let newHours = hours;
+                    
+                    if (newSeconds >= 60) {
+                        newSeconds = newSeconds % 60;
+                        newMinutes++;
+                    }
+                    
+                    if (newMinutes >= 60) {
+                        newMinutes = newMinutes % 60;
+                        newHours++;
+                    }
+                    
+                    document.getElementById('serverUptime').textContent = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}:${newSeconds.toString().padStart(2, '0')}`;
+                    
+                    // Randomly show warnings if resources get too high (for demo purposes)
+                    if (cpuUsage > 4.5) {
+                        logMessage(`High CPU usage detected: ${cpuUsage}%`, 'warning');
+                    }
+                    
+                    if (memoryUsed > 180) {
+                        logMessage(`High memory usage detected: ${memoryUsed}MB / 512MB`, 'warning');
+                    }
+                }, 5000);
+                
+                // Start log rotation (keep logs manageable)
+                startLogRotation();
+            }
+            
+            function startLogRotation() {
+                // Trim logs when they get too long
+                setInterval(() => {
+                    const logOutput = document.getElementById('logOutput');
+                    const logMessages = logOutput.querySelectorAll('.log-message');
+                    
+                    if (logMessages.length > 100) {
+                        // Remove oldest logs
+                        for (let i = 0; i < 20; i++) {
+                            if (logMessages[i]) {
+                                logMessages[i].remove();
+                            }
+                        }
+                        
+                        logMessage('Log rotation performed to maintain performance', 'info');
+                    }
+                }, 60000); // Check every minute
+            }
+            
+            function checkMCPServerConnection() {
+                // Simulate actual connection testing to MCP server
+                return new Promise((resolve, reject) => {
+                    logMessage('Testing connection to MCP server...', 'info');
+                    
+                    setTimeout(() => {
+                        // Simulate 90% success rate for demo
+                        if (Math.random() < 0.9) {
+                            resolve({
+                                status: 'connected',
+                                responseTime: Math.floor(Math.random() * 100 + 20) + 'ms',
+                                version: '1.0.' + Math.floor(Math.random() * 10)
+                            });
+                        } else {
+                            reject({
+                                error: 'connection_failed',
+                                message: 'Could not connect to MCP server'
+                            });
+                        }
+                    }, 1500);
+                });
+            }
+            
+            function deepScanMCPInstallation() {
+                // Comprehensive installation verification
+                logMessage('Starting deep scan of MCP installation...', 'info');
+                
+                const totalChecks = 5;
+                let completedChecks = 0;
+                let passedChecks = 0;
+                
+                // Update progress for deep scan
+                function updateDeepScanProgress(checkName, status, message) {
+                    completedChecks++;
+                    if (status === 'success') passedChecks++;
+                    
+                    const progressPercent = Math.floor((completedChecks / totalChecks) * 100);
+                    document.getElementById('progressBar').style.width = `${progressPercent}%`;
+                    document.getElementById('progressPercent').textContent = `${progressPercent}%`;
+                    
+                    logMessage(`[Deep Scan] ${checkName}: ${message}`, status);
+                    
+                    // Update final status when all checks are complete
+                    if (completedChecks === totalChecks) {
+                        if (passedChecks === totalChecks) {
+                            logMessage(`Deep scan complete: All ${totalChecks} checks passed`, 'success');
+                        } else {
+                            logMessage(`Deep scan complete: ${passedChecks}/${totalChecks} checks passed`, 'warning');
+                        }
+                    }
+                }
+                
+                // Simulate individual checks with realistic timing
+                setTimeout(() => {
+                    updateDeepScanProgress('File integrity', 'success', 'All MCP files verified');
+                }, 1000);
+                
+                setTimeout(() => {
+                    updateDeepScanProgress('Dependencies', 'success', 'All dependencies are installed correctly');
+                }, 2500);
+                
+                setTimeout(() => {
+                    // Simulate occasional config issues
+                    if (Math.random() < 0.8) {
+                        updateDeepScanProgress('Configuration', 'success', 'Configuration files are valid');
+                    } else {
+                        updateDeepScanProgress('Configuration', 'error', 'Missing required CORS settings');
+                    }
+                }, 3500);
+                
+                setTimeout(() => {
+                    updateDeepScanProgress('Database connection', 'success', 'Successfully connected to database');
+                }, 5000);
+                
+                setTimeout(() => {
+                    updateDeepScanProgress('External services', 'success', 'All external services are reachable');
+                }, 6500);
+            }
+            
+            // Add backup and restoration functionality
+            function backupMCPConfiguration() {
+                logMessage('Creating backup of MCP configuration...', 'info');
+                
+                // Simulate backup process
+                const progressBar = document.getElementById('progressBar');
+                const progressPercent = document.getElementById('progressPercent');
+                let progress = 0;
+                
+                const backupInterval = setInterval(() => {
+                    progress += 10;
+                    progressBar.style.width = `${progress}%`;
+                    progressPercent.textContent = `${progress}%`;
+                    
+                    if (progress === 100) {
+                        clearInterval(backupInterval);
+                        
+                        // Create fake timestamp for backup
+                        const now = new Date();
+                        const timestamp = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}`;
+                        
+                        logMessage(`Backup completed successfully: mcp_backup_${timestamp}.zip`, 'success');
+                        
+                        // Add download option
+                        const logOutput = document.getElementById('logOutput');
+                        const downloadLink = document.createElement('div');
+                        downloadLink.className = 'log-message success';
+                        downloadLink.innerHTML = `<a href="#" onclick="alert('This is a simulated download in the demo.'); return false;">Download backup file</a>`;
+                        logOutput.appendChild(downloadLink);
+                    }
+                }, 300);
+            }
+            
+            // Generate realistic install logs based on template
+            function generateTemplateSpecificLogs(template) {
+                const logs = {
+                    'basic-api': [
+                        { message: 'Initializing Express.js framework', type: 'info' },
+                        { message: 'Setting up MongoDB connection pool', type: 'info' },
+                        { message: 'Configuring JSON Web Token authentication', type: 'info' },
+                        { message: 'Creating RESTful API endpoints', type: 'info' },
+                        { message: 'Setting up Swagger API documentation', type: 'info' },
+                        { message: 'Configuring rate limiting middleware', type: 'info' },
+                        { message: 'Setting up error handling middleware', type: 'info' }
+                    ],
+                    'web-dashboard': [
+                        { message: 'Installing React.js dependencies', type: 'info' },
+                        { message: 'Setting up webpack configuration', type: 'info' },
+                        { message: 'Creating dashboard components', type: 'info' },
+                        { message: 'Setting up Redux state management', type: 'info' },
+                        { message: 'Configuring authentication flows', type: 'info' },
+                        { message: 'Setting up chart visualizations', type: 'info' },
+                        { message: 'Optimizing bundle size', type: 'info' }
+                    ],
+                    'data-processor': [
+                        { message: 'Setting up worker threads', type: 'info' },
+                        { message: 'Configuring RabbitMQ message broker', type: 'info' },
+                        { message: 'Setting up data transformation pipelines', type: 'info' },
+                        { message: 'Initializing ETL processes', type: 'info' },
+                        { message: 'Setting up data validation schemas', type: 'info' },
+                        { message: 'Configuring error recovery mechanisms', type: 'info' },
+                        { message: 'Setting up monitoring and alerting', type: 'info' }
+                    ],
+                    'media-server': [
+                        { message: 'Setting up file storage system', type: 'info' },
+                        { message: 'Configuring FFmpeg for transcoding', type: 'info' },
+                        { message: 'Setting up HLS streaming capabilities', type: 'info' },
+                        { message: 'Initializing media metadata extraction', type: 'info' },
+                        { message: 'Setting up CDN integration', type: 'info' },
+                        { message: 'Configuring access control for media', type: 'info' },
+                        { message: 'Setting up thumbnail generation service', type: 'info' }
+                    ],
+                    'ml-inference': [
+                        { message: 'Installing TensorFlow dependencies', type: 'info' },
+                        { message: 'Setting up GPU acceleration', type: 'info' },
+                        { message: 'Loading pre-trained models', type: 'info' },
+                        { message: 'Configuring model serving API', type: 'info' },
+                        { message: 'Setting up batch prediction capabilities', type: 'info' },
+                        { message: 'Initializing model metrics collection', type: 'info' },
+                        { message: 'Setting up A/B testing framework', type: 'info' }
+                    ],
+                    'full-stack': [
+                        { message: 'Setting up Next.js framework', type: 'info' },
+                        { message: 'Configuring MongoDB and Redis', type: 'info' },
+                        { message: 'Setting up authentication system', type: 'info' },
+                        { message: 'Creating API routes and services', type: 'info' },
+                        { message: 'Setting up React components and pages', type: 'info' },
+                        { message: 'Configuring serverless functions', type: 'info' },
+                        { message: 'Setting up deployment pipeline', type: 'info' }
+                    ]
+                };
+                
+                return logs[template] || logs['basic-api'];
+            }
+            
+            // Add performance test functionality
+            function runPerformanceTest() {
+                logMessage('Starting MCP Server performance test...', 'info');
+                
+                // Simulate performance test progress
+                const testSteps = [
+                    { name: 'Connection test', duration: 2000 },
+                    { name: 'Sequential request test', duration: 3000 },
+                    { name: 'Concurrent request test', duration: 5000 },
+                    { name: 'Data throughput test', duration: 4000 },
+                    { name: 'Memory usage test', duration: 3000 }
+                ];
+                
+                let currentStep = 0;
+                let totalDuration = testSteps.reduce((sum, step) => sum + step.duration, 0);
+                let elapsedTime = 0;
+                
+                // Update progress bar
+                function updateTestProgress(progress) {
+                    document.getElementById('progressBar').style.width = `${progress}%`;
+                    document.getElementById('progressPercent').textContent = `${Math.floor(progress)}%`;
+                }
+                
+                // Process each test step
+                function processNextStep() {
+                    if (currentStep >= testSteps.length) {
+                        // Tests complete
+                        logMessage('Performance test completed', 'success');
+                        
+                        // Generate report
+                        const reportData = {
+                            avgResponseTime: Math.floor(Math.random() * 50 + 20) + 'ms',
+                            maxConcurrentUsers: Math.floor(Math.random() * 500 + 500),
+                            throughput: Math.floor(Math.random() * 50 + 50) + ' req/sec',
+                            memoryUsage: Math.floor(Math.random() * 200 + 100) + 'MB',
+                            cpuUsage: Math.floor(Math.random() * 20 + 10) + '%'
+                        };
+                        
+                        logMessage('Performance Test Results:', 'info');
+                        logMessage(`Average Response Time: ${reportData.avgResponseTime}`, 'info');
+                        logMessage(`Max Concurrent Users: ${reportData.maxConcurrentUsers}`, 'info');
+                        logMessage(`Throughput: ${reportData.throughput}`, 'info');
+                        logMessage(`Memory Usage: ${reportData.memoryUsage}`, 'info');
+                        logMessage(`CPU Usage: ${reportData.cpuUsage}`, 'info');
+                        
+                        return;
+                    }
+                    
+                    const step = testSteps[currentStep];
+                    logMessage(`Running test: ${step.name}...`, 'info');
+                    
+                    let stepProgress = 0;
+                    const stepInterval = setInterval(() => {
+                        stepProgress += 10;
+                        elapsedTime += (step.duration / 10);
+                        const totalProgress = (elapsedTime / totalDuration) * 100;
+                        
+                        updateTestProgress(totalProgress);
+                        
+                        if (stepProgress >= 100) {
+                            clearInterval(stepInterval);
+                            
+                            // Generate result for this step
+                            const result = Math.random() < 0.9 ? 'success' : 'warning';
+                            const resultValue = result === 'success' ? 
+                                Math.floor(Math.random() * 50 + 50) + 'ms' : 
+                                Math.floor(Math.random() * 200 + 300) + 'ms';
+                            
+                            logMessage(`${step.name} completed: ${resultValue}`, result);
+                            
+                            currentStep++;
+                            processNextStep();
+                        }
+                    }, step.duration / 10);
+                }
+                
+                // Start the test process
+                processNextStep();
+            }
+            
+            // Add configuration editor functionality
+            function showConfigEditor() {
+                // Create modal overlay
+                const modalOverlay = document.createElement('div');
+                modalOverlay.className = 'modal-overlay';
+                modalOverlay.style.position = 'fixed';
+                modalOverlay.style.top = '0';
+                modalOverlay.style.left = '0';
+                modalOverlay.style.width = '100%';
+                modalOverlay.style.height = '100%';
+                modalOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                modalOverlay.style.display = 'flex';
+                modalOverlay.style.justifyContent = 'center';
+                modalOverlay.style.alignItems = 'center';
+                modalOverlay.style.zIndex = '1000';
+                
+                // Create modal content
+                const modalContent = document.createElement('div');
+                modalContent.className = 'modal-content';
+                modalContent.style.backgroundColor = 'white';
+                modalContent.style.borderRadius = '8px';
+                modalContent.style.padding = '20px';
+                modalContent.style.width = '80%';
+                modalContent.style.maxWidth = '800px';
+                modalContent.style.maxHeight = '80vh';
+                modalContent.style.overflow = 'auto';
+                
+                // Create modal header
+                const modalHeader = document.createElement('div');
+                modalHeader.style.display = 'flex';
+                modalHeader.style.justifyContent = 'space-between';
+                modalHeader.style.alignItems = 'center';
+                modalHeader.style.marginBottom = '20px';
+                
+                const modalTitle = document.createElement('h2');
+                modalTitle.textContent = 'MCP Server Configuration Editor';
+                modalTitle.style.margin = '0';
+                
+                const closeButton = document.createElement('button');
+                closeButton.innerHTML = '&times;';
+                closeButton.style.background = 'none';
+                closeButton.style.border = 'none';
+                closeButton.style.fontSize = '24px';
+                closeButton.style.cursor = 'pointer';
+                closeButton.addEventListener('click', () => {
+                    document.body.removeChild(modalOverlay);
+                });
+                
+                modalHeader.appendChild(modalTitle);
+                modalHeader.appendChild(closeButton);
+                
+                // Create editor
+                const editorContainer = document.createElement('div');
+                
+                // Sample configuration
+                const sampleConfig = {
+                    server: {
+                        port: 3000,
+                        host: '0.0.0.0',
+                        cors: {
+                            enabled: true,
+                            origins: ['*']
+                        },
+                        ssl: {
+                            enabled: false,
+                            cert: '',
+                            key: ''
+                        }
+                    },
+                    database: {
+                        type: 'mongodb',
+                        url: 'mongodb://localhost:27017/mcp',
+                        options: {
+                            useNewUrlParser: true,
+                            useUnifiedTopology: true
+                        }
+                    },
+                    auth: {
+                        type: 'jwt',
+                        secret: 'your-secret-key',
+                        expiresIn: '1d'
+                    },
+                    logging: {
+                        level: 'info',
+                        file: 'logs/mcp-server.log'
+                    }
+                };
+                
+                const editor = document.createElement('textarea');
+                editor.value = JSON.stringify(sampleConfig, null, 2);
+                editor.style.width = '100%';
+                editor.style.height = '400px';
+                editor.style.fontFamily = 'monospace';
+                editor.style.fontSize = '14px';
+                editor.style.padding = '10px';
+                editor.style.border = '1px solid #ddd';
+                editor.style.borderRadius = '4px';
+                editor.style.resize = 'vertical';
+                
+                editorContainer.appendChild(editor);
+                
+                // Create actions
+                const actionsContainer = document.createElement('div');
+                actionsContainer.style.display = 'flex';
+                actionsContainer.style.justifyContent = 'flex-end';
+                actionsContainer.style.marginTop = '20px';
+                actionsContainer.style.gap = '10px';
+                
+                const validateButton = document.createElement('button');
+                validateButton.textContent = 'Validate';
+                validateButton.className = 'btn btn-outline';
+                validateButton.style.width = 'auto';
+                validateButton.addEventListener('click', () => {
+                    try {
+                        JSON.parse(editor.value);
+                        alert('Configuration is valid JSON');
+                    } catch (error) {
+                        alert('Invalid JSON: ' + error.message);
+                    }
+                });
+                
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save Configuration';
+                saveButton.className = 'btn';
+                saveButton.style.width = 'auto';
+                saveButton.addEventListener('click', () => {
+                    try {
+                        JSON.parse(editor.value);
+                        logMessage('Configuration saved successfully', 'success');
+                        document.body.removeChild(modalOverlay);
+                    } catch (error) {
+                        alert('Cannot save invalid JSON: ' + error.message);
+                    }
+                });
+                
+                actionsContainer.appendChild(validateButton);
+                actionsContainer.appendChild(saveButton);
+                
+                // Assemble modal
+                modalContent.appendChild(modalHeader);
+                modalContent.appendChild(editorContainer);
+                modalContent.appendChild(actionsContainer);
+                
+                modalOverlay.appendChild(modalContent);
+                document.body.appendChild(modalOverlay);
+            }
+            
+            // Create context menu for advanced options
+            function createContextMenu() {
+                // Add context menu on right-click
+                document.addEventListener('contextmenu', function(e) {
+                    // Only show in the control panel
+                    if (!document.getElementById('controlPanel').contains(e.target)) {
+                        return;
+                    }
+                    
+                    e.preventDefault();
+                    
+                    // Remove existing context menus
+                    const existingMenu = document.querySelector('.context-menu');
+                    if (existingMenu) {
+                        existingMenu.remove();
+                    }
+                    
+                    // Create context menu
+                    const contextMenu = document.createElement('div');
+                    contextMenu.className = 'context-menu';
+                    contextMenu.style.position = 'fixed';
+                    contextMenu.style.zIndex = '1000';
+                    contextMenu.style.backgroundColor = 'white';
+                    contextMenu.style.border = '1px solid #ddd';
+                    contextMenu.style.borderRadius = '4px';
+                    contextMenu.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+                    contextMenu.style.padding = '5px 0';
+                    
+                    // Position the menu
+                    contextMenu.style.left = `${e.pageX}px`;
+                    contextMenu.style.top = `${e.pageY}px`;
+                    
+                    // Add menu items
+                    const menuItems = [
+                        { text: 'View Logs', icon: 'fa-file-alt', action: () => logMessage('Viewing server logs...', 'info') },
+                        { text: 'Edit Configuration', icon: 'fa-edit', action: showConfigEditor },
+                        { text: 'Restart Server', icon: 'fa-sync', action: () => document.getElementById('restartServerBtn').click() },
+                        { text: 'Run Performance Test', icon: 'fa-tachometer-alt', action: runPerformanceTest },
+                        { text: 'Create Backup', icon: 'fa-download', action: backupMCPConfiguration },
+                        { text: 'Deep Scan Installation', icon: 'fa-search', action: deepScanMCPInstallation }
+                    ];
+                    
+                    menuItems.forEach(item => {
+                        const menuItem = document.createElement('div');
+                        menuItem.className = 'context-menu-item';
+                        menuItem.style.padding = '8px 15px';
+                        menuItem.style.cursor = 'pointer';
+                        menuItem.style.display = 'flex';
+                        menuItem.style.alignItems = 'center';
+                        menuItem.style.fontSize = '14px';
+                        
+                        menuItem.innerHTML = `<i class="fas ${item.icon}" style="margin-right: 8px; width: 20px;"></i> ${item.text}`;
+                        
+                        menuItem.addEventListener('mouseover', () => {
+                            menuItem.style.backgroundColor = '#f5f5f5';
+                        });
+                        
+                        menuItem.addEventListener('mouseout', () => {
+                            menuItem.style.backgroundColor = 'transparent';
+                        });
+                        
+                        menuItem.addEventListener('click', () => {
+                            item.action();
+                            contextMenu.remove();
+                        });
+                        
+                        contextMenu.appendChild(menuItem);
+                    });
+                    
+                    // Add to document
+                    document.body.appendChild(contextMenu);
+                    
+                    // Close menu when clicking elsewhere
+                    document.addEventListener('click', function removeMenu() {
+                        contextMenu.remove();
+                        document.removeEventListener('click', removeMenu);
+                    });
+                });
+            }
+            
+            // Initialize context menu
+            createContextMenu();
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Ctrl+S for saving configuration
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    logMessage('Quick save configuration executed (Ctrl+S)', 'success');
+                }
+                
+                // Ctrl+R for restarting server
+                if (e.ctrlKey && e.key === 'r') {
+                    e.preventDefault();
+                    document.getElementById('restartServerBtn').click();
+                }
+                
+                // Ctrl+B for backup
+                if (e.ctrlKey && e.key === 'b') {
+                    e.preventDefault();
+                    backupMCPConfiguration();
+                }
+            });
+            
+            // Initial log message
+            logMessage('Ready to install Claude Desktop MCP packages', 'success');
+            logMessage('Right-click in control panel for additional options', 'info');
+        });
+    </script>
+</body>
+</html>
+        :root {
+            --primary: #2E86AB;
+            --secondary: #F18F01;
+            --dark: #333;
+            --light: #f9f9f9;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #fd7e14;
+            --info: #17a2b8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-weight: 600;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .installer-icon {
+            position: absolute;
+            top: -20px;
+            right: 20px;
+            background: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .installer-icon i {
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--dark);
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .input-group {
+            position: relative;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.2);
+        }
+        
+        .input-group i {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+        
+        .method-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .method-option {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .method-option:hover {
+            border-color: var(--primary);
+        }
+        
+        .method-option.selected {
+            border-color: var(--primary);
+            background-color: rgba(46, 134, 171, 0.05);
+        }
+        
+        .method-option i {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+        
+        .method-option h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            color: var(--dark);
+        }
+        
+        .method-option p {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #246e8c;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+        }
+        
+        .btn-warning:hover {
+            background: #e0660b;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            background: var(--success);
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .progress-container {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .progress-title {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 5px;
+        }
+        
+        .logs {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            color: #333;
+        }
+        
+        .log-message {
+            margin-bottom: 5px;
+            padding: 2px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .success {
+            color: var(--success);
+        }
+        
+        .error {
+            color: var(--danger);
+        }
+        
+        .warning {
+            color: var(--warning);
+        }
+        
+        .info {
+            color: var(--info);
+        }
+        
+        .verification-container {
+            margin-top: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            display: none;
+        }
+        
+        .verification-header {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+        }
+        
+        .verification-header i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .verification-status {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .verification-status i {
+            margin-right: 8px;
+        }
+        
+        .verification-details {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+        
+        .status-check {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .status-label {
+            font-weight: 500;
+        }
+        
+        .status-value {
+            font-weight: 600;
+        }
+        
+        .status-success {
+            color: var(--success);
+        }
+        
+        .status-error {
+            color: var(--danger);
+        }
+        
+        .status-warning {
+            color: var(--warning);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.8rem;
+            color: #777;
+            border-top: 1px solid #eee;
+        }
+        
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .template-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .template-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .template-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .template-card.selected {
+            border: 2px solid var(--primary);
+            background-color: rgba(46, 134, 171, 0.05);
+        }
+        
+        .template-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .template-title i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .template-desc {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .template-requirements {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .requirement-badge {
+            background: #eee;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: #555;
+        }
+        
+        .advanced-toggle {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            color: var(--primary);
+        }
+        
+        .advanced-toggle i {
+            margin-right: 8px;
+            transition: transform 0.3s;
+        }
+        
+        .advanced-toggle.active i {
+            transform: rotate(90deg);
+        }
+        
+        .advanced-section {
+            display: none;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .advanced-section.active {
+            display: block;
+        }
+        
+        .config-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .server-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .server-status-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .server-status-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .server-status-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .server-status-label {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        
+        .server-running {
+            color: var(--success);
+        }
+        
+        .server-stopped {
+            color: var(--danger);
+        }
+        
+        .server-warning {
+            color: var(--warning);
+        }
+        
+        @media (max-width: 768px) {
+            .template-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .method-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .config-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="installer-icon">
+                <i class="fas fa-server"></i>
+            </div>
+            <h1>Claude Desktop MCP Advanced Installer</h1>
+            <p>Install, configure and manage MCP Servers with full control</p>
+        </div>
+        
+        <div class="content">
+            <div class="tab-container">
+                <div class="tab active" data-tab="install">Install Server</div>
+                <div class="tab" data-tab="manage">Server Management</div>
+                <div class="tab" data-tab="logs">Logs & Diagnostics</div>
+            </div>
+            
+            <div class="tab-content active" id="install-tab">
+                <div class="form-group">
+                    <label for="installType">Installation Source</label>
+                    <select id="installType">
+                        <option value="template">From Template</option>
+                        <option value="git">Git Repository</option>
+                        <option value="local">Local Package</option>
+                    </select>
+                </div>
+                
+                <div id="template-section">
+                    <h3>Select Server Template</h3>
+                    <p class="info">Choose from our pre-configured MCP templates</p>
+                    
+                    <div class="template-container">
+                        <div class="template-card selected" data-template="basic">
+                            <div class="template-title">
+                                <i class="fas fa-star"></i> Basic MCP Server
+                            </div>
+                            <div class="template-desc">
+                                Minimal configuration for general purpose use cases.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">512MB RAM</span>
+                                <span class="requirement-badge">1 Core CPU</span>
+                            </div>
+                        </div>
+                        
+                        <div class="template-card" data-template="ai">
+                            <div class="template-title">
+                                <i class="fas fa-brain"></i> AI Endpoints
+                            </div>
+                            <div class="template-desc">
+                                Optimized for AI/ML inference endpoints with GPU support.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">4GB RAM</span>
+                                <span class="requirement-badge">GPU</span>
+                            </div>
+                        </div>
+                        
+                        <div class="template-card" data-template="database">
+                            <div class="template-title">
+                                <i class="fas fa-database"></i> Database Proxy
+                            </div>
+                            <div class="template-desc">
+                                Pre-configured for database connections and query management.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">2GB RAM</span>
+                            </div>
+                        </div>
+                        
+                        <div class="template-card" data-template="iot">
+                            <div class="template-title">
+                                <i class="fas fa-broadcast-tower"></i> IoT Gateway
+                            </div>
+                            <div class="template-desc">
+                                Specialized for IoT device communication and data aggregation.
+                            </div>
+                            <div class="template-requirements">
+                                <span class="requirement-badge">1GB RAM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="git-section" style="display:none;">
+                    <div class="form-group">
+                        <label for="repoUrl">GitHub Repository URL</label>
+                        <div class="input-group">
+                            <input type="text" id="repoUrl" placeholder="https://github.com/username/repo.git">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="installMethod">Installation Method</label>
+                    <div class="method-options">
+                        <div class="method-option selected" data-method="npx">
+                            <i class="fab fa-node-js"></i>
+                            <h3>npx</h3>
+                            <p>Fastest method with Node.js</p>
+                        </div>
+                        <div class="method-option" data-method="uv">
+                            <i class="fas fa-bolt"></i>
+                            <h3>uv</h3>
+                            <p>Universal package installer</p>
+                        </div>
+                        <div class="method-option" data-method="python">
+                            <i class="fab fa-python"></i>
+                            <h3>Python</h3>
+                            <p>Works with pip</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="installPath">Installation Path (optional)</label>
+                    <div class="input-group">
+                        <input type="text" id="installPath" placeholder="Default: system-specific path">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="serverName">Server Name (optional)</label>
+                    <div class="input-group">
+                        <input type="text" id="serverName" placeholder="e.g., My Production MCP Server">
+                        <i class="fas fa-tag"></i>
+                    </div>
+                </div>
+                
+                <div class="advanced-toggle">
+                    <i class="fas fa-chevron-right"></i> Advanced Configuration
+                </div>
+                
+                <div class="advanced-section">
+                    <div class="form-group">
+                        <label for="port">Server Port</label>
+                        <div class="input-group">
+                            <input type="number" id="port" placeholder="Default: 8080" value="8080" min="1024" max="49151">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="envVariables">Environment Variables (JSON)</label>
+                        <textarea id="envVariables" rows="4" placeholder='{"KEY": "value", "ANOTHER_KEY": "another_value"}'></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="configOverrides">Configuration Overrides (JSON)</label>
+                        <textarea id="configOverrides" rows="4" placeholder='{"setting": "value", "another_setting": 42}'></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="healthCheckPath">Health Check Path</label>
+                        <div class="input-group">
+                            <input type="text" id="healthCheckPath" placeholder="/api/health">
+                            <i class="fas fa-heartbeat"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="installBtn" class="btn">
+                    <i class="fas fa-download"></i> Install & Verify
+                </button>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-title">
+                        <span id="progressStatus">Preparing installation...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                    
+                    <div class="logs" id="logOutput">
+                        <!-- Log messages will appear here -->
+                    </div>
+                </div>
+                
+                <div class="verification-container" id="verificationContainer">
+                    <div class="verification-header">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Installation Verification</span>
+                    </div>
+                    
+                    <div class="server-controls">
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-server server-running"></i>
+                            </div>
+                            <div class="server-status-value">RUNNING</div>
+                            <div class="server-status-label">Server Status</div>
+                        </div>
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-plug"></i>
+                            </div>
+                            <div class="server-status-value" id="portStatus">8080</div>
+                            <div class="server-status-label">Listening Port</div>
+                        </div>
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-code-branch"></i>
+                            </div>
+                            <div class="server-status-value" id="versionStatus">v1.2.3</div>
+                            <div class="server-status-label">Version</div>
+                        </div>
+                        <div class="server-status-card">
+                            <div class="server-status-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="server-status-value" id="uptimeStatus">00:05:32</div>
+                            <div class="server-status-label">Uptime</div>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-details" id="verificationDetails">
+                        <div class="status-check">
+                            <span class="status-label">Health Check:</span>
+                            <span id="healthCheckStatus" class="status-value status-success">PASSED</span>
+                        </div>
+                        <div class="status-check">
+                            <span class="status-label">API Endpoints:</span>
+                            <span id="apiStatus" class="status-value status-success">5/5 AVAILABLE</span>
+                        </div>
+                        <div class="status-check">
+                            <span class="status-label">Dependencies:</span>
+                            <span id="depsStatus" class="status-value status-success">ALL SATISFIED</span>
+                        </div>
+                        <div class="status-check">
+                            <span class="status-label">Resources:</span>
+                            <span id="resourcesStatus" class="status-value status-success">
+                                CPU: 12% | MEM: 450MB/2GB
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button id="restartServerBtn" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> Restart
+                        </button>
+                        <button id="stopServerBtn" class="btn btn-danger">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button id="backupServerBtn" class="btn btn-success">
+                            <i class="fas fa-save"></i> Backup
+                        </button>
+                        <button id="configureServerBtn" class="btn btn-secondary">
+                            <i class="fas fa-cog"></i> Configure
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="manage-tab">
+                <h3>Server Management Dashboard</h3>
+                <p>Manage your installed MCP server instances</p>
+                
+                <div class="form-group">
+                    <label for="managedServer">Select Server</label>
+                    <select id="managedServer">
+                        <option value="1">My Production MCP Server (Running)</option>
+                        <option value="2">Staging Server (Stopped)</option>
+                        <option value="3">Development Instance (Running)</option>
+                    </select>
+                </div>
+                
+                <div class="server-controls">
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-server server-running"></i>
+                        </div>
+                        <div class="server-status-value">RUNNING</div>
+                        <div class="server-status-label">Status</div>
+                    </div>
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="server-status-value">8080</div>
+                        <div class="server-status-label">Port</div>
+                    </div>
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                        <div class="server-status-value">v1.2.3</div>
+                        <div class="server-status-label">Version</div>
+                    </div>
+                    <div class="server-status-card">
+                        <div class="server-status-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="server-status-value">2d 4h 15m</div>
+                        <div class="server-status-label">Uptime</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Server Actions</label>
+                    <div class="btn-group">
+                        <button class="btn btn-success">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="btn btn-warning">
+                            <i class="fas fa-redo"></i> Restart
+                        </button>
+                        <button class="btn btn-danger">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-cogs"></i> Settings
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-wrench"></i> Maintain
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-arrow-up"></i> Update
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-history"></i> Rollback
+                        </button>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Export Config
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-upload"></i> Import Config
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-save"></i> Backup
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-file-archive"></i> Package
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="advanced-toggle">
+                    <i class="fas fa-chevron-right"></i> Advanced Management
+                </div>
+                
+                <div class="advanced-section">
+                    <div class="form-group">
+                        <label for="configEditor">Configuration Editor</label>
+                        <textarea id="configEditor" rows="10" placeholder='Edit your server configuration...'>{
+  "server": {
+    "port": 8080,
+    "max_connections": 100,
+    "timeout": 30
+  },
+  "logging": {
+    "level": "info",
+    "file": "server.log"
+  }
+}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="envEditor">Environment Variables</label>
+                        <textarea id="envEditor" rows="5" placeholder='Edit environment variables...'>NODE_ENV=production
+API_KEY=your_api_key_here
+MAX_WORKERS=4</textarea>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-success">
+                            <i class="fas fa-check"></i> Apply Changes
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-sync"></i> Reload
+                        </button>
+                        <button class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Reset to Defaults
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="logs-tab">
+                <h3>Server Logs & Diagnostics</h3>
+                <p>Inspect server activity and troubleshoot issues</p>
+                
+                <div class="form-group">
+                    <label for="logType">Log Type</label>
+                    <select id="logType">
+                        <option value="install">Installation Logs</option>
+                        <option value="server" selected>Server Runtime Logs</option>
+                        <option value="access">Access Logs</option>
+                        <option value="error">Error Logs</option>
+                        <option value="debug">Debug Logs</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Log Filters</label>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary active">
+                            <i class="fas fa-list"></i> All
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-info-circle"></i> Info
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-exclamation-triangle"></i> Warnings
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-times-circle"></i> Errors
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="logs" style="height: 300px;">
+                    <div class="log-message info">
+                        [2023-07-15 14:32:10] INFO: Server started on port 8080
+                    </div>
+                    <div class="log-message info">
+                        [2023-07-15 14:32:12] INFO: Connected to database at mongodb://localhost:27017
+                    </div>
+                    <div class="log-message">
+                        [2023-07-15 14:33:45] GET /api/status 200 12ms
+                    </div>
+                    <div class="log-message warning">
+                        [2023-07-15 14:34:22] WARNING: High memory usage detected (85%)
+                    </div>
+                    <div class="log-message">
+                        [2023-07-15 14:35:10] POST /api/data 201 42ms
+                    </
+</html>	
