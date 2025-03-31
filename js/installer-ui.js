@@ -110,6 +110,35 @@ function addEventListeners() {
             verifyJsonConfiguration();
         });
     }
+    
+    // Template search input
+    const templateSearchInput = document.getElementById('templateSearch');
+    if (templateSearchInput) {
+        templateSearchInput.addEventListener('input', function() {
+            filterTemplates(this.value);
+        });
+    }
+}
+
+/**
+ * Filter template cards based on search query
+ * @param {string} query - The search query
+ */
+function filterTemplates(query) {
+    const normalizedQuery = query.toLowerCase().trim();
+    const templateCards = document.querySelectorAll('.template-card');
+    
+    templateCards.forEach(card => {
+        const titleElement = card.querySelector('h3') || card.querySelector('.template-title');
+        const descElement = card.querySelector('p') || card.querySelector('.template-desc');
+        
+        const title = titleElement ? titleElement.textContent.toLowerCase() : '';
+        const description = descElement ? descElement.textContent.toLowerCase() : '';
+        
+        const isMatch = title.includes(normalizedQuery) || description.includes(normalizedQuery);
+        
+        card.style.display = isMatch ? '' : 'none';
+    });
 }
 
 /**
