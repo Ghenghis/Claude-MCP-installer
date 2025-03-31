@@ -1,0 +1,18 @@
+# Requirements for Claude Desktop MCP Installer
+
+This file lists potential dependencies, primarily for context, as the core installer is HTML/CSS/JavaScript.
+
+## Core Installer
+- No specific Python requirements. Runs in a standard web browser.
+
+## MCP Server Dependencies (Handled by Chosen Installation Method)
+
+The actual dependencies depend heavily on the **MCP Server Template** and **Installation Method** chosen within the installer:
+
+*   **`npx` Method:** Requires **Node.js** and **npm/npx** to be installed and in the system PATH. Node.js handles the dependencies for Node-based servers during installation via `npx`.
+    *   See `WINDOWS_SETUP.md` for Node.js installation instructions.
+*   **`python` Method:** Requires **Python** and **pip** to be installed and in the system PATH. Pip handles the dependencies for Python-based servers during installation.
+    *   See `WINDOWS_SETUP.md` for Python installation instructions.
+*   **`uv` Method:** Requires the `uv` installer. Dependencies are handled by `uv`.
+
+**In summary:** You don't typically need to manually install packages from this file. Ensure you have the correct prerequisite (Node.js or Python) installed based on the installation method you intend to use, as described in `WINDOWS_SETUP.md`. The chosen installer (`npx`, `pip`, `uv`) will manage the specific server's dependencies.
