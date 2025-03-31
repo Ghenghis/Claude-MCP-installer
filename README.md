@@ -21,10 +21,11 @@ This installer is designed to be run directly from the `index.html` or `advanced
 3.  **Follow:** Use the interface to select your desired MCP server template and installation method.
 4.  **Install:** Click the "Install MCP Server" button.
 
-For more detailed instructions, especially for Windows users or complete beginners, please see:
+For more detailed instructions, prerequisites, and dependency information, please see:
 
-*   `WINDOWS_SETUP.md`: Specific instructions for setting up on Windows.
-*   `WALKTHROUGH.md`: A step-by-step guide to using the installer.
+*   **[Windows Setup Guide](./WINDOWS_SETUP.md):** Specific instructions for setting up prerequisites (like Node.js or Python) on Windows. **Read this first if you are on Windows!**
+*   **[Step-by-Step Walkthrough](./WALKTHROUGH.md):** A detailed guide on how to use the installer interface.
+*   **[Requirements Context](./requirements.txt):** Explains how dependencies are handled (you usually don't need to install things from this file directly).
 
 ## Configuration Tools
 
