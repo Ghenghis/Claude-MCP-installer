@@ -30,43 +30,65 @@ function initBackupUI() {
  * Add event listeners for backup UI elements
  */
 function addBackupEventListeners() {
-    // Backup button (in server details)
+    _setupModalControlListeners();
+    _setupBackupActionListeners();
+    _setupRestoreActionListeners();
+    _setupBackupManagerActionListeners(); // Handles dynamically added buttons too
+
+    // Add event listeners for backup tab (if needed, or move into a helper)
+    setupBackupTabEventListeners();
+}
+
+/**
+ * Sets up event listeners for general modal open/close controls.
+ * @private
+ */
+function _setupModalControlListeners() {
+    // Backup button (in server details) -> Show Backup Modal
     document.querySelectorAll('.backup-server-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const serverId = this.getAttribute('data-server-id');
-            if (serverId) {
-                showBackupModal(serverId);
-            }
+            if (serverId) showBackupModal(serverId);
         });
     });
-    
-    // Restore button (in server details)
+
+    // Restore button (in server details) -> Show Restore Modal
     document.querySelectorAll('.restore-server-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const serverId = this.getAttribute('data-server-id');
-            if (serverId) {
-                showRestoreModal(serverId);
-            }
+            if (serverId) showRestoreModal(serverId);
         });
     });
-    
-    // Backup all servers button
-    const backupAllBtn = document.getElementById('backupAllBtn');
-    if (backupAllBtn) {
-        backupAllBtn.addEventListener('click', function() {
-            showBackupAllModal();
-        });
+
+    // Buttons with simple handlers
+    _addClickListener('backupAllBtn', showBackupAllModal);
+    _addClickListener('manageBackupsBtn', showBackupManagerModal);
+    _addClickListener('closeBackupModalBtn', hideBackupModal);
+    _addClickListener('closeRestoreModalBtn', hideRestoreModal);
+    _addClickListener('closeBackupManagerModalBtn', hideBackupManagerModal);
+    _addClickListener('closeBackupDetailsModalBtn', hideBackupDetailsModal);
+    _addClickListener('cancelRestoreBtn', hideRestoreConfirmModal);
+}
+
+/**
+ * Helper to add a click event listener to an element if it exists.
+ * @private
+ * @param {string} elementId - The ID of the element.
+ * @param {Function} handler - The event handler function.
+ */
+function _addClickListener(elementId, handler) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.addEventListener('click', handler);
     }
-    
-    // Manage backups button
-    const manageBackupsBtn = document.getElementById('manageBackupsBtn');
-    if (manageBackupsBtn) {
-        manageBackupsBtn.addEventListener('click', function() {
-            showBackupManagerModal();
-        });
-    }
-    
-    // Create backup form
+}
+
+/**
+ * Sets up event listeners related to backup creation actions.
+ * @private
+ */
+function _setupBackupActionListeners() {
+    // Create backup form submission
     const createBackupForm = document.getElementById('createBackupForm');
     if (createBackupForm) {
         createBackupForm.addEventListener('submit', function(event) {
@@ -74,98 +96,68 @@ function addBackupEventListeners() {
             handleCreateBackup();
         });
     }
-    
-    // Close backup modal button
-    const closeBackupModalBtn = document.getElementById('closeBackupModalBtn');
-    if (closeBackupModalBtn) {
-        closeBackupModalBtn.addEventListener('click', function() {
-            hideBackupModal();
-        });
-    }
-    
-    // Close restore modal button
-    const closeRestoreModalBtn = document.getElementById('closeRestoreModalBtn');
-    if (closeRestoreModalBtn) {
-        closeRestoreModalBtn.addEventListener('click', function() {
-            hideRestoreModal();
-        });
-    }
-    
-    // Close backup manager modal button
-    const closeBackupManagerModalBtn = document.getElementById('closeBackupManagerModalBtn');
-    if (closeBackupManagerModalBtn) {
-        closeBackupManagerModalBtn.addEventListener('click', function() {
-            hideBackupManagerModal();
-        });
-    }
-    
-    // Restore backup button (in restore modal)
+}
+
+/**
+ * Sets up event listeners related to restore actions.
+ * @private
+ */
+function _setupRestoreActionListeners() {
+    // Restore backup button (in restore modal) -> Show Confirm Modal
     const restoreBackupBtn = document.getElementById('restoreBackupBtn');
     if (restoreBackupBtn) {
         restoreBackupBtn.addEventListener('click', function() {
-            const backupId = document.getElementById('backupSelect').value;
+            const backupId = document.getElementById('backupSelect')?.value;
             if (backupId) {
                 showRestoreConfirmModal(backupId);
+            } else {
+                showErrorNotification("Please select a backup to restore.");
             }
         });
     }
-    
-    // Confirm restore button
+
+    // Confirm restore button (in confirm modal)
     const confirmRestoreBtn = document.getElementById('confirmRestoreBtn');
     if (confirmRestoreBtn) {
-        confirmRestoreBtn.addEventListener('click', function() {
-            handleRestoreBackup();
-        });
+        confirmRestoreBtn.addEventListener('click', handleRestoreBackup);
     }
-    
-    // Cancel restore button
-    const cancelRestoreBtn = document.getElementById('cancelRestoreBtn');
-    if (cancelRestoreBtn) {
-        cancelRestoreBtn.addEventListener('click', function() {
-            hideRestoreConfirmModal();
-        });
-    }
-    
-    // Delete backup button (in backup manager)
+}
+
+/**
+ * Sets up event listeners for actions within the backup manager,
+ * using event delegation for dynamically added elements.
+ * @private
+ */
+function _setupBackupManagerActionListeners() {
+    const managerActionHandlers = {
+        'delete-backup-btn': (backupId) => confirmDeleteBackup(backupId),
+        'restore-backup-btn': (backupId) => showRestoreConfirmModal(backupId),
+        'view-backup-btn': (backupId) => showBackupDetailsModal(backupId),
+    };
+
     document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('delete-backup-btn')) {
-            const backupId = event.target.getAttribute('data-backup-id');
-            if (backupId) {
-                confirmDeleteBackup(backupId);
+        // Find the closest button element to the clicked target
+        const targetButton = event.target.closest('button[data-backup-id]');
+        
+        if (!targetButton) {
+            return; // Click was not on or inside a relevant button
+        }
+
+        const backupId = targetButton.getAttribute('data-backup-id');
+        // backupId should exist based on the selector, but double-check
+        if (!backupId) {
+            return; 
+        }
+
+        // Check which action class the button has and call the handler
+        for (const className in managerActionHandlers) {
+            if (targetButton.classList.contains(className)) {
+                managerActionHandlers[className](backupId);
+                event.stopPropagation(); // Prevent potential parent handlers
+                return; // Action handled
             }
         }
     });
-    
-    // Restore backup button (in backup manager)
-    document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('restore-backup-btn')) {
-            const backupId = event.target.getAttribute('data-backup-id');
-            if (backupId) {
-                showRestoreConfirmModal(backupId);
-            }
-        }
-    });
-    
-    // View backup details button (in backup manager)
-    document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('view-backup-btn')) {
-            const backupId = event.target.getAttribute('data-backup-id');
-            if (backupId) {
-                showBackupDetailsModal(backupId);
-            }
-        }
-    });
-    
-    // Close backup details modal button
-    const closeBackupDetailsModalBtn = document.getElementById('closeBackupDetailsModalBtn');
-    if (closeBackupDetailsModalBtn) {
-        closeBackupDetailsModalBtn.addEventListener('click', function() {
-            hideBackupDetailsModal();
-        });
-    }
-    
-    // Add event listeners for backup tab
-    setupBackupTabEventListeners();
 }
 
 /**
@@ -265,13 +257,25 @@ function setupBackupManagerEventListeners() {
 }
 
 /**
+ * Sets the display style for a modal element.
+ * @private
+ * @param {string} modalId - The ID of the modal element.
+ * @param {string} displayStyle - The display style to set ('block', 'none', etc.).
+ * @returns {HTMLElement|null} The modal element if found, otherwise null.
+ */
+function _setModalDisplay(modalId, displayStyle) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = displayStyle;
+    }
+    return modal;
+}
+
+/**
  * Show backup modal
  * @param {string} serverId - Server ID
  */
 function showBackupModal(serverId) {
-    const backupModal = document.getElementById('backupModal');
-    if (!backupModal) return;
-    
     // Set server ID
     document.getElementById('backupServerId').value = serverId;
     
@@ -281,7 +285,10 @@ function showBackupModal(serverId) {
         document.getElementById('backupModalTitle').textContent = `Backup ${server.name}`;
         
         // Show modal
-        backupModal.style.display = 'block';
+        _setModalDisplay('backupModal', 'block');
+    }).catch(error => {
+        showErrorNotification("Failed to load server info for backup modal.");
+        console.error("Error fetching server info:", error);
     });
 }
 
@@ -289,15 +296,13 @@ function showBackupModal(serverId) {
  * Hide backup modal
  */
 function hideBackupModal() {
-    const backupModal = document.getElementById('backupModal');
-    if (backupModal) {
-        backupModal.style.display = 'none';
-    }
-    
-    // Reset form
-    const createBackupForm = document.getElementById('createBackupForm');
-    if (createBackupForm) {
-        createBackupForm.reset();
+    const modal = _setModalDisplay('backupModal', 'none');
+    if (modal) {
+        // Reset form
+        const createBackupForm = document.getElementById('createBackupForm');
+        if (createBackupForm) {
+            createBackupForm.reset();
+        }
     }
 }
 
@@ -306,22 +311,19 @@ function hideBackupModal() {
  * @param {string} serverId - Server ID
  */
 function showRestoreModal(serverId) {
-    const restoreModal = document.getElementById('restoreModal');
-    if (!restoreModal) return;
-    
     // Set server ID
     document.getElementById('restoreServerId').value = serverId;
     
-    // Get server info
+    // Load backups for the server
+    loadBackupsForServer(serverId);
+    
+    // Get server info for title
     getServerInfo(serverId).then(server => {
-        // Update modal title
         document.getElementById('restoreModalTitle').textContent = `Restore ${server.name}`;
-        
-        // Load backups for server
-        loadBackupsForServer(serverId);
-        
-        // Show modal
-        restoreModal.style.display = 'block';
+        _setModalDisplay('restoreModal', 'block');
+    }).catch(error => {
+        showErrorNotification("Failed to load server info for restore modal.");
+        console.error("Error fetching server info:", error);
     });
 }
 
@@ -329,61 +331,38 @@ function showRestoreModal(serverId) {
  * Hide restore modal
  */
 function hideRestoreModal() {
-    const restoreModal = document.getElementById('restoreModal');
-    if (restoreModal) {
-        restoreModal.style.display = 'none';
-    }
+    _setModalDisplay('restoreModal', 'none');
 }
 
 /**
  * Show backup all modal
  */
 function showBackupAllModal() {
-    const backupAllModal = document.getElementById('backupAllModal');
-    if (!backupAllModal) return;
-    
-    // Show modal
-    backupAllModal.style.display = 'block';
+    _setModalDisplay('backupAllModal', 'block');
+    // Potentially list servers or show confirmation details here
 }
 
 /**
  * Hide backup all modal
  */
 function hideBackupAllModal() {
-    const backupAllModal = document.getElementById('backupAllModal');
-    if (backupAllModal) {
-        backupAllModal.style.display = 'none';
-    }
-    
-    // Reset form
-    const backupAllForm = document.getElementById('backupAllForm');
-    if (backupAllForm) {
-        backupAllForm.reset();
-    }
+    _setModalDisplay('backupAllModal', 'none');
+    // Any cleanup for backup all modal?
 }
 
 /**
  * Show backup manager modal
  */
 function showBackupManagerModal() {
-    const backupManagerModal = document.getElementById('backupManagerModal');
-    if (!backupManagerModal) return;
-    
-    // Update backup list
-    updateBackupList();
-    
-    // Show modal
-    backupManagerModal.style.display = 'block';
+    updateBackupList(); // Ensure the list is up-to-date
+    _setModalDisplay('backupManagerModal', 'block');
 }
 
 /**
  * Hide backup manager modal
  */
 function hideBackupManagerModal() {
-    const backupManagerModal = document.getElementById('backupManagerModal');
-    if (backupManagerModal) {
-        backupManagerModal.style.display = 'none';
-    }
+    _setModalDisplay('backupManagerModal', 'none');
 }
 
 /**
@@ -391,33 +370,24 @@ function hideBackupManagerModal() {
  * @param {string} backupId - Backup ID
  */
 function showRestoreConfirmModal(backupId) {
-    const restoreConfirmModal = document.getElementById('restoreConfirmModal');
-    if (!restoreConfirmModal) return;
-    
-    // Set backup ID
+    // Set backup ID for confirmation
     document.getElementById('restoreBackupId').value = backupId;
     
-    // Get backup info
-    const backup = window.backupManager.getBackupById(backupId);
-    if (backup) {
-        // Update modal content
-        document.getElementById('restoreBackupDate').textContent = formatDate(backup.createdAt);
-        document.getElementById('restoreBackupName').textContent = backup.name;
-        document.getElementById('restoreBackupServer').textContent = backup.serverName;
-        
-        // Show modal
-        restoreConfirmModal.style.display = 'block';
-    }
+    // You might want to display the backup name/date here for confirmation
+    // const backupDetails = findBackupById(backupId); // Assuming a function to get details
+    // if (backupDetails) {
+    //    document.getElementById('restoreConfirmDetails').textContent = `Restore backup from ${formatDate(backupDetails.timestamp)}?`;
+    // }
+    
+    _setModalDisplay('restoreConfirmModal', 'block');
 }
 
 /**
  * Hide restore confirm modal
  */
 function hideRestoreConfirmModal() {
-    const restoreConfirmModal = document.getElementById('restoreConfirmModal');
-    if (restoreConfirmModal) {
-        restoreConfirmModal.style.display = 'none';
-    }
+    _setModalDisplay('restoreConfirmModal', 'none');
+    document.getElementById('restoreBackupId').value = ''; // Clear the stored ID
 }
 
 /**
@@ -425,45 +395,34 @@ function hideRestoreConfirmModal() {
  * @param {string} backupId - Backup ID
  */
 function showBackupDetailsModal(backupId) {
-    const backupDetailsModal = document.getElementById('backupDetailsModal');
-    if (!backupDetailsModal) return;
-    
-    // Get backup info
-    const backup = window.backupManager.getBackupById(backupId);
-    if (backup) {
-        // Update modal content
-        document.getElementById('backupDetailsName').textContent = backup.name;
-        document.getElementById('backupDetailsDate').textContent = formatDate(backup.createdAt);
-        document.getElementById('backupDetailsServer').textContent = backup.serverName;
-        document.getElementById('backupDetailsType').textContent = backup.type;
-        document.getElementById('backupDetailsSize').textContent = formatSize(backup.size);
-        document.getElementById('backupDetailsStatus').textContent = backup.status;
-        
-        // Load backup manifest
-        window.backupManager.loadBackupManifest(backupId).then(manifest => {
-            // Update items list
-            const itemsList = document.getElementById('backupDetailsItems');
-            if (itemsList) {
-                itemsList.innerHTML = '';
-                
-                manifest.items.forEach(item => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <strong>${item.name}</strong> (${item.type})
-                        <div class="item-details">
-                            <div>Original path: ${item.originalPath}</div>
-                            <div>Size: ${formatSize(item.size)}</div>
-                        </div>
-                    `;
-                    itemsList.appendChild(li);
-                });
-            }
-        }).catch(error => {
-            console.error('Error loading backup manifest:', error);
-        });
-        
-        // Show modal
-        backupDetailsModal.style.display = 'block';
+    const modal = _setModalDisplay('backupDetailsModal', 'block');
+    if (!modal) return;
+
+    const detailsContainer = document.getElementById('backupDetailsContent');
+    detailsContainer.innerHTML = '<p>Loading backup details...</p>'; // Show loading state
+
+    try {
+        const backupData = await window.backupManager.getBackupDetails(backupId);
+        if (!backupData) {
+            detailsContainer.innerHTML = '<p>Error: Backup details not found.</p>';
+            return;
+        }
+
+        // Populate details (customize as needed)
+        detailsContainer.innerHTML = `
+            <h5>Backup Details</h5>
+            <p><strong>ID:</strong> ${backupData.id}</p>
+            <p><strong>Timestamp:</strong> ${formatDate(backupData.timestamp)}</p>
+            <p><strong>Size:</strong> ${formatSize(backupData.size)}</p>
+            <p><strong>Server ID:</strong> ${backupData.serverId}</p>
+            <p><strong>Status:</strong> ${backupData.status}</p>
+            ${backupData.notes ? `<p><strong>Notes:</strong> ${backupData.notes}</p>` : ''}
+            <!-- Add more details as available -->
+        `;
+    } catch (error) {
+        console.error('Error fetching backup details:', error);
+        detailsContainer.innerHTML = `<p>Error loading backup details: ${error.message}</p>`;
+        showErrorNotification('Failed to load backup details.');
     }
 }
 
@@ -471,9 +430,13 @@ function showBackupDetailsModal(backupId) {
  * Hide backup details modal
  */
 function hideBackupDetailsModal() {
-    const backupDetailsModal = document.getElementById('backupDetailsModal');
-    if (backupDetailsModal) {
-        backupDetailsModal.style.display = 'none';
+    const modal = _setModalDisplay('backupDetailsModal', 'none');
+    if (modal) {
+         // Clear details content when hiding
+        const detailsContainer = document.getElementById('backupDetailsContent');
+        if (detailsContainer) {
+            detailsContainer.innerHTML = '';
+        }
     }
 }
 
@@ -696,13 +659,41 @@ function createBackupListItem(backup) {
 }
 
 /**
+ * Sets the text content of an element by its ID.
+ * @private
+ * @param {string} elementId - The ID of the element.
+ * @param {string} text - The text content to set.
+ */
+function _setTextContent(elementId, text) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = text;
+    }
+}
+
+/**
+ * Updates the width and ARIA value of a progress bar.
+ * @private
+ * @param {string} barId - The ID of the progress bar element.
+ * @param {number} progress - The progress percentage (0-100).
+ */
+function _updateProgressBar(barId, progress) {
+    const progressBar = document.getElementById(barId);
+    if (progressBar) {
+        const clampedProgress = Math.max(0, Math.min(100, progress)); // Ensure 0-100
+        progressBar.style.width = `${clampedProgress}%`;
+        progressBar.setAttribute('aria-valuenow', clampedProgress);
+    }
+}
+
+/**
  * Update backup status
  * @param {string} backupId - Backup ID
  * @param {string} status - Status
  * @param {string} message - Status message
  */
 function updateBackupStatus(backupId, status, message) {
-    // Update status in UI
+    // Update status in UI list item
     const backupItem = document.querySelector(`.backup-item[data-id="${backupId}"]`);
     if (backupItem) {
         const statusElement = backupItem.querySelector('.backup-status');
@@ -712,11 +703,8 @@ function updateBackupStatus(backupId, status, message) {
         }
     }
     
-    // Update progress message
-    const progressMessage = document.getElementById('backupProgressMessage');
-    if (progressMessage) {
-        progressMessage.textContent = message;
-    }
+    // Update overall progress message
+    _setTextContent('backupProgressMessage', message);
 }
 
 /**
@@ -727,17 +715,10 @@ function updateBackupStatus(backupId, status, message) {
  */
 function updateBackupProgress(backupId, progress, message) {
     // Update progress bar
-    const progressBar = document.getElementById('backupProgressBar');
-    if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress);
-    }
+    _updateProgressBar('backupProgressBar', progress);
     
     // Update progress message
-    const progressMessage = document.getElementById('backupProgressMessage');
-    if (progressMessage) {
-        progressMessage.textContent = message;
-    }
+    _setTextContent('backupProgressMessage', message);
 }
 
 /**
@@ -748,10 +729,7 @@ function updateBackupProgress(backupId, progress, message) {
  */
 function updateRestoreStatus(backupId, status, message) {
     // Update progress message
-    const progressMessage = document.getElementById('restoreProgressMessage');
-    if (progressMessage) {
-        progressMessage.textContent = message;
-    }
+    _setTextContent('restoreProgressMessage', message);
 }
 
 /**
@@ -762,58 +740,57 @@ function updateRestoreStatus(backupId, status, message) {
  */
 function updateRestoreProgress(backupId, progress, message) {
     // Update progress bar
-    const progressBar = document.getElementById('restoreProgressBar');
-    if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress);
-    }
+    _updateProgressBar('restoreProgressBar', progress);
     
     // Update progress message
-    const progressMessage = document.getElementById('restoreProgressMessage');
-    if (progressMessage) {
-        progressMessage.textContent = message;
-    }
+    _setTextContent('restoreProgressMessage', message);
 }
 
 /**
  * Get server info
  * @param {string} serverId - Server ID
- * @returns {Promise<Object>} Server info
+ * @returns {Promise<Object|null>} Server info object or null if not found.
  */
 async function getServerInfo(serverId) {
-    // Check if Docker manager is available
-    if (window.dockerManager) {
-        const container = window.dockerManager.getContainerById(serverId);
-        if (container) {
-            return {
-                id: container.id,
-                name: container.name,
-                type: 'docker',
-                status: container.status
-            };
+    // Define different ways to get server/container info
+    const managerCheckers = [
+        {
+            name: 'DockerManager',
+            exists: () => window.dockerManager,
+            fetch: (id) => {
+                const container = window.dockerManager.getContainerById(id);
+                return container ? { id: container.id, name: container.name, type: 'docker', status: container.status } : null;
+            }
+        },
+        {
+            name: 'ServerManager',
+            exists: () => window.serverManager,
+            fetch: (id) => {
+                const server = window.serverManager.getServerById(id);
+                return server ? { id: server.id, name: server.name, type: server.type, status: server.status } : null;
+            }
+        }
+        // Future managers can be added here easily
+    ];
+
+    // Iterate through available managers to find the info
+    for (const checker of managerCheckers) {
+        if (checker.exists()) {
+            try {
+                const info = await checker.fetch(serverId); // Assuming fetch might be async in the future
+                if (info) {
+                    return info; // Found it!
+                }
+            } catch (error) {
+                console.error(`Error fetching server info from ${checker.name}:`, error);
+                // Continue to the next checker
+            }
         }
     }
-    
-    // Check if server manager is available
-    if (window.serverManager) {
-        const server = window.serverManager.getServerById(serverId);
-        if (server) {
-            return {
-                id: server.id,
-                name: server.name,
-                type: server.type,
-                status: server.status
-            };
-        }
-    }
-    
-    // Return mock data if server not found
-    return {
-        id: serverId,
-        name: `Server ${serverId}`,
-        type: 'unknown',
-        status: 'unknown'
-    };
+
+    // If not found in any manager after checking all
+    console.warn(`Server info not found for ID: ${serverId} in any available manager.`);
+    return null;
 }
 
 /**
