@@ -19,13 +19,13 @@ This file tracks planned features, improvements, and bug fixes for the Advanced 
     -   [x] Implement status tracking and visual indicators.
 -   [x] **Test Queue Installation:** Thoroughly test the `handleInstallQueue` flow with real repositories and different methods.
 -   [x] **Refactor `handleInstallQueue` (mcp-search.js):** Address complexity (cc=15, ID: fe93dc83) by breaking down into smaller functions.
--   [ ] **Docker Integration:**
+-   [x] **Docker Integration:**
     -   [x] Add option to install/manage MCP servers as Docker containers.
     -   [x] Implement Docker command generation with customizable configuration.
     -   [x] Add Docker-specific UI controls for container configuration.
     -   [x] Display online/offline status for containerized servers.
     -   [x] Provide basic Docker controls (start/stop/restart/logs).
--   [ ] **Server Management Tab:**
+-   [x] **Server Management Tab:**
     -   [x] Display list of currently installed servers (regardless of install method).
     -   [x] Show basic status (running/stopped, requires Docker integration or process check).
     -   [x] Add controls (start/stop/restart - needs method-specific implementation).
@@ -73,3 +73,22 @@ This file tracks planned features, improvements, and bug fixes for the Advanced 
     -   [x] Create installer-ui-url.js for URL-based installation functionality
     -   [x] Move remaining functions to appropriate modules
     -   [x] Update main file to be a lightweight coordinator
+
+## Future Enhancements
+
+-   [ ] **Enhanced Security Features:**
+    -   [ ] Implement secure credential storage for MCP servers
+    -   [ ] Add HTTPS support for local server communication
+    -   [ ] Create permission management system for server access
+-   [ ] **Performance Monitoring:**
+    -   [ ] Add real-time resource usage monitoring for servers
+    -   [ ] Implement performance optimization suggestions
+    -   [ ] Create historical performance tracking
+-   [ ] **Advanced Configuration Management:**
+    -   [ ] Develop configuration templates for common server types
+    -   [ ] Add configuration validation and error checking
+    -   [ ] Create visual configuration editor
+-   [ ] **Cloud Integration:**
+    -   [ ] Add support for deploying MCP servers to cloud providers
+    -   [ ] Implement cloud resource management
+    -   [ ] Create cost estimation and optimization tools
