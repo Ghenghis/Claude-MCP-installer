@@ -12,6 +12,15 @@ class ConfigValidator {
         
         // Initialize validator
         this.initializeValidator();
+
+        // Map types to their constraint validation methods
+        this._constraintValidators = {
+            string: this._validateStringConstraints.bind(this),
+            number: this._validateNumberConstraints.bind(this),
+            integer: this._validateNumberConstraints.bind(this), // Reuse number validator
+            array: this._validateArrayConstraints.bind(this),
+            object: this._validateObjectConstraints.bind(this)
+        };
     }
     
     /**
@@ -91,58 +100,20 @@ class ConfigValidator {
      * @returns {Object} Validation result
      */
     validateConfig(config, schema, options = {}) {
+        const basicValidation = this._validateBasicInputs(config, schema);
+        if (!basicValidation.valid) {
+            return basicValidation;
+        }
+        
         try {
-            if (!config) {
-                return {
-                    valid: false,
-                    errors: ['Configuration is empty or undefined']
-                };
-            }
-            
-            if (!schema) {
-                return {
-                    valid: false,
-                    errors: ['Schema is empty or undefined']
-                };
-            }
-            
-            // Basic validation result structure
             const result = {
                 valid: true,
                 errors: [],
                 warnings: []
             };
-            
-            // Validate required fields
-            const requiredErrors = this.validateRequired(config, schema);
-            if (requiredErrors.length > 0) {
-                result.valid = false;
-                result.errors.push(...requiredErrors);
-            }
-            
-            // Validate types and constraints
-            const typeErrors = this.validateTypes(config, schema);
-            if (typeErrors.length > 0) {
-                result.valid = false;
-                result.errors.push(...typeErrors);
-            }
-            
-            // Apply custom validators if specified in schema
-            const customErrors = this.applyCustomValidators(config, schema, options);
-            if (customErrors.length > 0) {
-                result.valid = false;
-                result.errors.push(...customErrors);
-            }
-            
-            // Check for unknown properties if additionalProperties is false
-            if (schema.additionalProperties === false) {
-                const knownProps = Object.keys(schema.properties || {});
-                const unknownProps = Object.keys(config).filter(key => !knownProps.includes(key) && !key.startsWith('_'));
-                
-                if (unknownProps.length > 0) {
-                    result.warnings.push(`Unknown properties found: ${unknownProps.join(', ')}`);
-                }
-            }
+
+            this._runCoreValidations(config, schema, options, result);
+            this._checkAdditionalProperties(config, schema, result);
             
             return result;
         } catch (error) {
@@ -154,6 +125,69 @@ class ConfigValidator {
         }
     }
     
+    /**
+     * Validates basic inputs (config and schema existence).
+     * @private
+     */
+    _validateBasicInputs(config, schema) {
+        if (!config) {
+            return {
+                valid: false,
+                errors: ['Configuration is empty or undefined']
+            };
+        }
+        if (!schema) {
+            return {
+                valid: false,
+                errors: ['Schema is empty or undefined']
+            };
+        }
+        return { valid: true }; // Inputs are valid
+    }
+
+    /**
+     * Runs the core validation steps: required, types, custom.
+     * @private
+     */
+    _runCoreValidations(config, schema, options, result) {
+        const requiredErrors = this.validateRequired(config, schema);
+        if (requiredErrors.length > 0) {
+            result.valid = false;
+            result.errors.push(...requiredErrors);
+        }
+        
+        const typeErrors = this.validateTypes(config, schema);
+        if (typeErrors.length > 0) {
+            result.valid = false;
+            result.errors.push(...typeErrors);
+        }
+        
+        const customErrors = this.applyCustomValidators(config, schema, options);
+        if (customErrors.length > 0) {
+            result.valid = false;
+            result.errors.push(...customErrors);
+        }
+    }
+
+    /**
+     * Checks for unknown properties based on schema.additionalProperties.
+     * @private
+     */
+    _checkAdditionalProperties(config, schema, result) {
+        if (schema.additionalProperties === false) {
+            const knownProps = new Set(Object.keys(schema.properties || {}));
+            const unknownProps = Object.keys(config).filter(key => 
+                !knownProps.has(key) && !key.startsWith('_')
+            );
+            
+            if (unknownProps.length > 0) {
+                // Add as warnings, not errors, as per standard JSON schema validation behavior
+                result.warnings.push(`Unknown properties found: ${unknownProps.join(', ')}`);
+                // Note: Depending on strictness requirements, this could set result.valid = false
+            }
+        }
+    }
+
     /**
      * Validate required fields
      * @param {Object} config - Configuration to validate
@@ -185,37 +219,68 @@ class ConfigValidator {
         const errors = [];
         const properties = schema.properties || {};
         
-        // Check each property against its schema definition
         for (const [key, value] of Object.entries(config)) {
-            // Skip metadata fields
-            if (key.startsWith('_')) {
-                continue;
-            }
-            
-            const propSchema = properties[key];
-            
-            // Skip if no schema for this property
-            if (!propSchema) {
-                continue;
-            }
-            
-            // Validate type
-            if (propSchema.type) {
-                const typeError = this.validateType(value, propSchema.type, key);
-                if (typeError) {
-                    errors.push(typeError);
-                    continue; // Skip further validation if type is wrong
-                }
-            }
-            
-            // Validate constraints based on type
-            const constraintErrors = this.validateConstraints(value, propSchema, key);
-            if (constraintErrors.length > 0) {
-                errors.push(...constraintErrors);
-            }
+            this._validateSingleProperty(key, value, properties, errors);
         }
         
         return errors;
+    }
+    
+    /**
+     * Validates a single property's type and constraints.
+     * @param {string} key - Property key
+     * @param {*} value - Property value
+     * @param {Object} properties - Schema properties definition
+     * @param {Array} errors - Array to push errors into
+     * @private
+     */
+    _validateSingleProperty(key, value, properties, errors) {
+        // Skip metadata fields
+        if (key.startsWith('_')) {
+            return;
+        }
+        
+        const propSchema = properties[key];
+        
+        // Skip if no schema for this property or if type validation fails
+        if (!propSchema || !this._validatePropertyType(key, value, propSchema, errors)) {
+            return;
+        }
+        
+        // Validate constraints only if type validation passed
+        this._validatePropertyConstraints(key, value, propSchema, errors);
+    }
+    
+    /**
+     * Validates the type of a single property.
+     * @returns {boolean} - True if type is valid, false otherwise.
+     * @private
+     */
+    _validatePropertyType(key, value, propSchema, errors) {
+        if (propSchema.type) {
+            const typeError = this.validateType(value, propSchema.type, key);
+            if (typeError) {
+                errors.push(typeError);
+                return false; // Type validation failed
+            }
+        }
+        return true; // Type validation passed or no type specified
+    }
+    
+    /**
+     * Validates the constraints of a single property.
+     * @private
+     */
+    _validatePropertyConstraints(key, value, propSchema, errors) {
+        const validator = this._constraintValidators[propSchema.type];
+        
+        if (validator) {
+            const constraintErrors = validator(value, propSchema, key);
+            if (constraintErrors.length > 0) {
+                errors.push(...constraintErrors);
+            }
+        } 
+        // No specific validator needed for boolean, null, etc., or if type is unknown
     }
     
     /**
@@ -294,132 +359,341 @@ class ConfigValidator {
         
         switch (schema.type) {
             case 'string':
-                // Validate string constraints
-                if (schema.minLength !== undefined && value.length < schema.minLength) {
-                    errors.push(`Field "${path}" should have a minimum length of ${schema.minLength}`);
-                }
-                
-                if (schema.maxLength !== undefined && value.length > schema.maxLength) {
-                    errors.push(`Field "${path}" should have a maximum length of ${schema.maxLength}`);
-                }
-                
-                if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
-                    errors.push(`Field "${path}" should match pattern "${schema.pattern}"`);
-                }
-                
-                if (schema.enum && !schema.enum.includes(value)) {
-                    errors.push(`Field "${path}" should be one of: ${schema.enum.join(', ')}`);
-                }
-                break;
-                
+                return this._validateStringConstraints(value, schema, path);
             case 'number':
             case 'integer':
-                // Validate number constraints
-                if (schema.minimum !== undefined && value < schema.minimum) {
-                    errors.push(`Field "${path}" should be >= ${schema.minimum}`);
-                }
-                
-                if (schema.maximum !== undefined && value > schema.maximum) {
-                    errors.push(`Field "${path}" should be <= ${schema.maximum}`);
-                }
-                
-                if (schema.exclusiveMinimum !== undefined && value <= schema.exclusiveMinimum) {
-                    errors.push(`Field "${path}" should be > ${schema.exclusiveMinimum}`);
-                }
-                
-                if (schema.exclusiveMaximum !== undefined && value >= schema.exclusiveMaximum) {
-                    errors.push(`Field "${path}" should be < ${schema.exclusiveMaximum}`);
-                }
-                
-                if (schema.multipleOf !== undefined && value % schema.multipleOf !== 0) {
-                    errors.push(`Field "${path}" should be a multiple of ${schema.multipleOf}`);
-                }
-                break;
-                
+                return this._validateNumberConstraints(value, schema, path);
             case 'array':
-                // Validate array constraints
-                if (schema.minItems !== undefined && value.length < schema.minItems) {
-                    errors.push(`Field "${path}" should have at least ${schema.minItems} items`);
-                }
-                
-                if (schema.maxItems !== undefined && value.length > schema.maxItems) {
-                    errors.push(`Field "${path}" should have at most ${schema.maxItems} items`);
-                }
-                
-                if (schema.uniqueItems === true) {
-                    const uniqueItems = new Set(value.map(JSON.stringify));
-                    if (uniqueItems.size !== value.length) {
-                        errors.push(`Field "${path}" should have unique items`);
-                    }
-                }
-                
-                // Validate array items
-                if (schema.items && value.length > 0) {
-                    for (let i = 0; i < value.length; i++) {
-                        const itemPath = `${path}[${i}]`;
-                        
-                        // Validate item type
-                        if (schema.items.type) {
-                            const typeError = this.validateType(value[i], schema.items.type, itemPath);
-                            if (typeError) {
-                                errors.push(typeError);
-                                continue; // Skip further validation if type is wrong
-                            }
-                        }
-                        
-                        // Validate item constraints
-                        const constraintErrors = this.validateConstraints(value[i], schema.items, itemPath);
-                        if (constraintErrors.length > 0) {
-                            errors.push(...constraintErrors);
-                        }
-                    }
-                }
-                break;
-                
+                return this._validateArrayConstraints(value, schema, path);
             case 'object':
-                // Validate object constraints
-                if (schema.minProperties !== undefined && Object.keys(value).length < schema.minProperties) {
-                    errors.push(`Field "${path}" should have at least ${schema.minProperties} properties`);
-                }
-                
-                if (schema.maxProperties !== undefined && Object.keys(value).length > schema.maxProperties) {
-                    errors.push(`Field "${path}" should have at most ${schema.maxProperties} properties`);
-                }
-                
-                // Validate object properties (recursive validation)
-                if (schema.properties) {
-                    for (const [propKey, propValue] of Object.entries(value)) {
-                        const propPath = `${path}.${propKey}`;
-                        const propSchema = schema.properties[propKey];
-                        
-                        if (propSchema) {
-                            // Validate property type
-                            if (propSchema.type) {
-                                const typeError = this.validateType(propValue, propSchema.type, propPath);
-                                if (typeError) {
-                                    errors.push(typeError);
-                                    continue; // Skip further validation if type is wrong
-                                }
-                            }
-                            
-                            // Validate property constraints
-                            const constraintErrors = this.validateConstraints(propValue, propSchema, propPath);
-                            if (constraintErrors.length > 0) {
-                                errors.push(...constraintErrors);
-                            }
-                        }
-                    }
-                }
-                break;
-                
+                return this._validateObjectConstraints(value, schema, path);
             default:
                 // No constraint validation for other types
-                break;
+                return errors;
+        }
+    }
+    
+    /**
+     * Validate string-specific constraints
+     * @param {string} value - String value to validate
+     * @param {Object} schema - Schema containing string constraints
+     * @param {string} path - Path to the value
+     * @returns {Array} Validation errors
+     * @private
+     */
+    _validateStringConstraints(value, schema, path) {
+        const errors = [];
+
+        // Use helper functions for each constraint check
+        this._checkMinLength(value, schema, path, errors);
+        this._checkMaxLength(value, schema, path, errors);
+        this._checkPattern(value, schema, path, errors);
+        this._checkFormat(value, schema, path, errors);
+        this._checkEnum(value, schema, path, errors);
+        
+        return errors;
+    }
+    
+    /**
+     * Checks the minLength constraint
+     * @private
+     */
+    _checkMinLength(value, schema, path, errors) {
+        if (schema.minLength !== undefined && value.length < schema.minLength) {
+            errors.push(`Field "${path}" should have at least ${schema.minLength} characters`);
+        }
+    }
+    
+    /**
+     * Checks the maxLength constraint
+     * @private
+     */
+    _checkMaxLength(value, schema, path, errors) {
+        if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+            errors.push(`Field "${path}" should have at most ${schema.maxLength} characters`);
+        }
+    }
+    
+    /**
+     * Checks the pattern constraint
+     * @private
+     */
+    _checkPattern(value, schema, path, errors) {
+        if (schema.pattern !== undefined) {
+            try {
+                const regex = new RegExp(schema.pattern);
+                if (!regex.test(value)) {
+                    errors.push(`Field "${path}" should match the pattern ${schema.pattern}`);
+                }
+            } catch (e) {
+                logger.error(`Invalid regex pattern ${schema.pattern} in schema for ${path}: ${e.message}`);
+                errors.push(`Internal validation error: Invalid regex pattern for ${path}`);
+            }
+        }
+    }
+    
+    /**
+     * Checks the format constraint
+     * @private
+     */
+    _checkFormat(value, schema, path, errors) {
+        if (schema.format !== undefined) {
+            if (typeof this.customValidators[schema.format] === 'function') {
+                const formatErrors = this.customValidators[schema.format](value, path);
+                if (formatErrors && formatErrors.length > 0) {
+                    errors.push(...formatErrors);
+                }
+            } else {
+                logger.warn(`Unknown format ${schema.format} for field "${path}"`);
+            }
+        }
+    }
+    
+    /**
+     * Checks the enum constraint
+     * @private
+     */
+    _checkEnum(value, schema, path, errors) {
+        if (schema.enum !== undefined && !schema.enum.includes(value)) {
+            errors.push(`Field "${path}" should be one of [${schema.enum.join(', ')}]`);
+        }
+    }
+    
+    /**
+     * Validate number-specific constraints
+     * @param {number} value - Number value to validate
+     * @param {Object} schema - Schema containing number constraints
+     * @param {string} path - Path to the value
+     * @returns {Array} Validation errors
+     * @private
+     */
+    _validateNumberConstraints(value, schema, path) {
+        const errors = [];
+        
+        if (schema.minimum !== undefined && value < schema.minimum) {
+            errors.push(`Field "${path}" should be >= ${schema.minimum}`);
+        }
+        
+        if (schema.maximum !== undefined && value > schema.maximum) {
+            errors.push(`Field "${path}" should be <= ${schema.maximum}`);
+        }
+        
+        if (schema.exclusiveMinimum !== undefined && value <= schema.exclusiveMinimum) {
+            errors.push(`Field "${path}" should be > ${schema.exclusiveMinimum}`);
+        }
+        
+        if (schema.exclusiveMaximum !== undefined && value >= schema.exclusiveMaximum) {
+            errors.push(`Field "${path}" should be < ${schema.exclusiveMaximum}`);
+        }
+        
+        if (schema.multipleOf !== undefined && value % schema.multipleOf !== 0) {
+            errors.push(`Field "${path}" should be a multiple of ${schema.multipleOf}`);
         }
         
         return errors;
     }
     
+    /**
+     * Validate array-specific constraints
+     * @param {Array} value - Array value to validate
+     * @param {Object} schema - Schema containing array constraints
+     * @param {string} path - Path to the value
+     * @returns {Array} Validation errors
+     * @private
+     */
+    _validateArrayConstraints(value, schema, path) {
+        const errors = [];
+        
+        this._checkArraySizeConstraints(value, schema, path, errors);
+        this._checkArrayUniqueness(value, schema, path, errors);
+        this._validateArrayItems(value, schema, path, errors);
+        
+        return errors;
+    }
+    
+    /**
+     * Checks array size constraints (minItems, maxItems)
+     * @private
+     */
+    _checkArraySizeConstraints(value, schema, path, errors) {
+        if (schema.minItems !== undefined && value.length < schema.minItems) {
+            errors.push(`Field "${path}" should have at least ${schema.minItems} items`);
+        }
+        
+        if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+            errors.push(`Field "${path}" should have at most ${schema.maxItems} items`);
+        }
+    }
+    
+    /**
+     * Checks array uniqueness constraint
+     * @private
+     */
+    _checkArrayUniqueness(value, schema, path, errors) {
+        if (schema.uniqueItems === true) {
+            // Use Set for efficient uniqueness check, handle complex objects via stringify
+            const uniqueItems = new Set(value.map(item => 
+                typeof item === 'object' && item !== null ? JSON.stringify(item) : item
+            ));
+            if (uniqueItems.size !== value.length) {
+                errors.push(`Field "${path}" should have unique items`);
+            }
+        }
+    }
+    
+    /**
+     * Validates each item in the array against the items schema
+     * @private
+     */
+    _validateArrayItems(value, schema, path, errors) {
+        if (!schema.items) {
+            return; // No items schema to validate against
+        }
+        
+        // Assuming single schema for all items for now
+        const itemSchema = schema.items;
+        
+        for (let i = 0; i < value.length; i++) {
+            this._validateSingleArrayItem(value[i], i, path, itemSchema, errors);
+        }
+    }
+    
+    /**
+     * Validates a single item within an array.
+     * @param {*} item - The array item value.
+     * @param {number} index - The index of the item in the array.
+     * @param {string} basePath - The base path to the array.
+     * @param {Object} itemSchema - The schema for the array item.
+     * @param {Array} errors - Array to push errors into.
+     * @private
+     */
+    _validateSingleArrayItem(item, index, basePath, itemSchema, errors) {
+        const itemPath = `${basePath}[${index}]`;
+        const itemErrors = this.validateConstraints(item, itemSchema, itemPath);
+        errors.push(...itemErrors);
+    }
+    
+    /**
+     * Validate object-specific constraints
+     * @param {Object} value - Object value to validate
+     * @param {Object} schema - Schema containing object constraints
+     * @param {string} path - Path to the value
+     * @returns {Array} Validation errors
+     * @private
+     */
+    _validateObjectConstraints(value, schema, path) {
+        const errors = [];
+        
+        this._checkObjectSizeConstraints(value, schema, path, errors);
+        this._validateObjectProperties(value, schema, path, errors);
+        
+        return errors;
+    }
+    
+    /**
+     * Checks object size constraints (minProperties, maxProperties)
+     * @private
+     */
+    _checkObjectSizeConstraints(value, schema, path, errors) {
+        const numProperties = Object.keys(value).length;
+        if (schema.minProperties !== undefined && numProperties < schema.minProperties) {
+            errors.push(`Field "${path}" should have at least ${schema.minProperties} properties`);
+        }
+        
+        if (schema.maxProperties !== undefined && numProperties > schema.maxProperties) {
+            errors.push(`Field "${path}" should have at most ${schema.maxProperties} properties`);
+        }
+    }
+    
+    /**
+     * Validates properties of an object against a schema.
+     * @param {Object} value - Object value to validate
+     * @param {Object} schema - Schema to validate against
+     * @param {string} path - Path to the value
+     * @param {Array} errors - Array to push errors into
+     * @private
+     */
+    _validateObjectProperties(value, schema, path, errors) {
+        // Validate known properties defined in schema.properties
+        this._validateKnownObjectProperties(value, schema, path, errors);
+        
+        // Validate properties matching patterns in schema.patternProperties
+        this._validatePatternProperties(value, schema, path, errors);
+    }
+    
+    /**
+     * Validates properties explicitly defined in schema.properties.
+     * @private
+     */
+    _validateKnownObjectProperties(value, schema, path, errors) {
+        if (!schema.properties) {
+            return; // No known properties defined
+        }
+        
+        for (const [key, propValue] of Object.entries(value)) {
+            // Skip metadata fields
+            if (key.startsWith('_')) {
+                continue;
+            }
+            
+            const propSchema = schema.properties[key];
+            const currentPath = path ? `${path}.${key}` : key;
+            
+            if (propSchema) {
+                // Validate type and constraints for this known property
+                const typeError = this.validateType(propValue, propSchema.type, currentPath);
+                if (typeError) {
+                    errors.push(typeError);
+                } else {
+                    // Only validate constraints if type is correct
+                    const constraintErrors = this.validateConstraints(propValue, propSchema, currentPath);
+                    errors.push(...constraintErrors);
+                }
+            }
+            // Note: Handling of additional properties (keys not in schema.properties)
+            // is managed by _checkAdditionalProperties, called from validateConfig.
+        }
+    }
+    
+    /**
+     * Validates properties matching patterns in schema.patternProperties.
+     * @private
+     */
+    _validatePatternProperties(value, schema, path, errors) {
+        if (!schema.patternProperties) {
+            return; // No pattern properties defined
+        }
+
+        for (const [key, propValue] of Object.entries(value)) {
+             // Skip metadata fields
+            if (key.startsWith('_')) {
+                continue;
+            }
+
+            for (const pattern in schema.patternProperties) {
+                try {
+                    const regex = new RegExp(pattern);
+                    if (regex.test(key)) {
+                        const patternSchema = schema.patternProperties[pattern];
+                        const currentPath = path ? `${path}.${key}` : key;
+
+                        const typeError = this.validateType(propValue, patternSchema.type, currentPath);
+                        if (typeError) {
+                            errors.push(typeError);
+                        } else {
+                            // Only validate constraints if type is correct and pattern matches
+                            const constraintErrors = this.validateConstraints(propValue, patternSchema, currentPath);
+                            errors.push(...constraintErrors);
+                        }
+                    }
+                } catch (e) {
+                   logger.error(`Invalid regex pattern ${pattern} in schema for ${path}: ${e.message}`);
+                   errors.push(`Internal validation error: Invalid regex pattern for ${path}`);
+                }
+            }
+        }
+    }
+
     /**
      * Apply custom validators
      * @param {Object} config - Configuration to validate
@@ -512,64 +786,6 @@ class ConfigValidator {
     }
     
     /**
-     * Validate all configurations
-     * @param {Array} configs - Configurations to validate
-     * @returns {Object} Validation results
-     */
-    validateAllConfigs(configs) {
-        try {
-            if (!configs || !Array.isArray(configs)) {
-                return {
-                    valid: false,
-                    errors: ['Configurations must be an array']
-                };
-            }
-            
-            const results = {};
-            let allValid = true;
-            
-            // Validate each configuration
-            for (const config of configs) {
-                if (!config._id) {
-                    continue;
-                }
-                
-                // Get template ID
-                const templateId = config._template;
-                
-                if (!templateId) {
-                    results[config._id] = {
-                        valid: false,
-                        errors: ['No template specified for configuration']
-                    };
-                    allValid = false;
-                    continue;
-                }
-                
-                // Validate configuration
-                const result = this.validateConfigAgainstTemplate(config, templateId, { configs });
-                
-                results[config._id] = result;
-                
-                if (!result.valid) {
-                    allValid = false;
-                }
-            }
-            
-            return {
-                valid: allValid,
-                results
-            };
-        } catch (error) {
-            logger.error('Error validating all configurations:', error);
-            return {
-                valid: false,
-                errors: [`Validation error: ${error.message}`]
-            };
-        }
-    }
-    
-    /**
      * Fix configuration issues automatically when possible
      * @param {Object} config - Configuration to fix
      * @param {string} templateId - Template ID
@@ -588,98 +804,315 @@ class ConfigValidator {
             const fixedConfig = { ...config };
             const schema = template.configSchema;
             
-            // Apply default values for missing fields
-            if (schema.properties) {
-                for (const [propName, propSchema] of Object.entries(schema.properties)) {
-                    if (fixedConfig[propName] === undefined && propSchema.default !== undefined) {
-                        fixedConfig[propName] = propSchema.default;
-                        logger.info(`Auto-fixed: Applied default value for ${propName}: ${propSchema.default}`);
-                    }
-                }
-            }
-            
-            // Fix type issues
-            for (const [propName, propValue] of Object.entries(fixedConfig)) {
-                // Skip metadata fields
-                if (propName.startsWith('_')) {
-                    continue;
-                }
-                
-                const propSchema = schema.properties && schema.properties[propName];
-                
-                if (!propSchema || propSchema.type === undefined) {
-                    continue;
-                }
-                
-                // Type conversion
-                switch (propSchema.type) {
-                    case 'string':
-                        if (typeof propValue !== 'string') {
-                            fixedConfig[propName] = String(propValue);
-                            logger.info(`Auto-fixed: Converted ${propName} to string: ${fixedConfig[propName]}`);
-                        }
-                        break;
-                        
-                    case 'number':
-                        if (typeof propValue !== 'number') {
-                            const converted = Number(propValue);
-                            if (!isNaN(converted)) {
-                                fixedConfig[propName] = converted;
-                                logger.info(`Auto-fixed: Converted ${propName} to number: ${fixedConfig[propName]}`);
-                            }
-                        }
-                        break;
-                        
-                    case 'boolean':
-                        if (typeof propValue !== 'boolean') {
-                            if (propValue === 'true' || propValue === 1) {
-                                fixedConfig[propName] = true;
-                                logger.info(`Auto-fixed: Converted ${propName} to boolean: true`);
-                            } else if (propValue === 'false' || propValue === 0) {
-                                fixedConfig[propName] = false;
-                                logger.info(`Auto-fixed: Converted ${propName} to boolean: false`);
-                            }
-                        }
-                        break;
-                        
-                    case 'array':
-                        if (!Array.isArray(propValue)) {
-                            // Try to convert string to array if it looks like a JSON array
-                            if (typeof propValue === 'string' && propValue.startsWith('[') && propValue.endsWith(']')) {
-                                try {
-                                    fixedConfig[propName] = JSON.parse(propValue);
-                                    logger.info(`Auto-fixed: Converted ${propName} to array`);
-                                } catch (e) {
-                                    // Keep original if parsing fails
-                                }
-                            } else if (propValue !== undefined && propValue !== null) {
-                                // Convert single value to array with that value
-                                fixedConfig[propName] = [propValue];
-                                logger.info(`Auto-fixed: Converted ${propName} to array: [${propValue}]`);
-                            }
-                        }
-                        break;
-                }
-                
-                // Fix constraint issues
-                if (propSchema.type === 'number' || propSchema.type === 'integer') {
-                    if (propSchema.minimum !== undefined && propValue < propSchema.minimum) {
-                        fixedConfig[propName] = propSchema.minimum;
-                        logger.info(`Auto-fixed: Set ${propName} to minimum value: ${propSchema.minimum}`);
-                    }
-                    
-                    if (propSchema.maximum !== undefined && propValue > propSchema.maximum) {
-                        fixedConfig[propName] = propSchema.maximum;
-                        logger.info(`Auto-fixed: Set ${propName} to maximum value: ${propSchema.maximum}`);
-                    }
-                }
-            }
+            // Apply different fixes in sequence
+            this._applyDefaultValues(fixedConfig, schema);
+            this._applyTypeConversions(fixedConfig, schema);
+            this._applyConstraintCorrections(fixedConfig, schema);
             
             return fixedConfig;
         } catch (error) {
             logger.error(`Error auto-fixing configuration for template ${templateId}:`, error);
             return config;
         }
+    }
+    
+    /**
+     * Apply default values for missing fields
+     * @param {Object} config - Configuration to modify
+     * @param {Object} schema - JSON Schema containing defaults
+     * @private
+     */
+    _applyDefaultValues(config, schema) {
+        if (!schema.properties) {
+            return;
+        }
+        
+        for (const [propName, propSchema] of Object.entries(schema.properties)) {
+            if (config[propName] === undefined && propSchema.default !== undefined) {
+                config[propName] = propSchema.default;
+                logger.info(`Auto-fixed: Applied default value for ${propName}: ${propSchema.default}`);
+            }
+        }
+    }
+    
+    /**
+     * Apply type conversions to fix type issues
+     * @param {Object} config - Configuration to modify
+     * @param {Object} schema - JSON Schema containing type information
+     * @private
+     */
+    _applyTypeConversions(config, schema) {
+        if (!schema.properties) {
+            return;
+        }
+        
+        for (const [propName, propValue] of Object.entries(config)) {
+            // Skip metadata fields or apply conversion
+            if (!propName.startsWith('_')) {
+                 this._applySingleTypeConversion(config, schema, propName, propValue);
+            }
+        }
+    }
+
+    /**
+     * Applies type conversion for a single property based on its schema.
+     * @param {Object} config - Configuration object being modified.
+     * @param {Object} schema - The full schema object.
+     * @param {string} propName - The name of the property to convert.
+     * @param {*} propValue - The current value of the property.
+     * @private
+     */
+    _applySingleTypeConversion(config, schema, propName, propValue) {
+        const propSchema = schema.properties && schema.properties[propName];
+            
+        if (!propSchema || propSchema.type === undefined) {
+            // No schema definition or type for this property, skip conversion
+            return;
+        }
+        
+        // Apply appropriate type conversion based on schema type
+        switch (propSchema.type) {
+            case 'string':
+                this._convertToString(config, propName, propValue);
+                break;
+                
+            case 'number':
+                this._convertToNumber(config, propName, propValue);
+                break;
+                
+            case 'boolean':
+                this._convertToBoolean(config, propName, propValue);
+                break;
+                
+            case 'array':
+                this._convertToArray(config, propName, propValue);
+                break;
+        }
+    }
+    
+    /**
+     * Convert a value to string type
+     * @param {Object} config - Configuration to modify
+     * @param {string} propName - Property name
+     * @param {*} propValue - Property value
+     * @private
+     */
+    _convertToString(config, propName, propValue) {
+        if (typeof propValue !== 'string') {
+            config[propName] = String(propValue);
+            logger.info(`Auto-fixed: Converted ${propName} to string: ${config[propName]}`);
+        }
+    }
+    
+    /**
+     * Convert a value to number type
+     * @param {Object} config - Configuration to modify
+     * @param {string} propName - Property name
+     * @param {*} propValue - Property value
+     * @private
+     */
+    _convertToNumber(config, propName, propValue) {
+        if (typeof propValue !== 'number') {
+            const converted = Number(propValue);
+            if (!isNaN(converted)) {
+                config[propName] = converted;
+                logger.info(`Auto-fixed: Converted ${propName} to number: ${config[propName]}`);
+            }
+        }
+    }
+    
+    /**
+     * Convert a value to boolean type
+     * @param {Object} config - Configuration to modify
+     * @param {string} propName - Property name
+     * @param {*} propValue - Property value
+     * @private
+     */
+    _convertToBoolean(config, propName, propValue) {
+        if (typeof propValue !== 'boolean') {
+            if (propValue === 'true' || propValue === 1) {
+                config[propName] = true;
+                logger.info(`Auto-fixed: Converted ${propName} to boolean: true`);
+            } else if (propValue === 'false' || propValue === 0) {
+                config[propName] = false;
+                logger.info(`Auto-fixed: Converted ${propName} to boolean: false`);
+            }
+        }
+    }
+    
+    /**
+     * Convert a value to array type
+     * @param {Object} config - Configuration to modify
+     * @param {string} propName - Property name
+     * @param {*} propValue - Property value
+     * @private
+     */
+    _convertToArray(config, propName, propValue) {
+        if (!Array.isArray(propValue)) {
+            // Try to convert string to array if it looks like a JSON array
+            if (typeof propValue === 'string' && propValue.startsWith('[') && propValue.endsWith(']')) {
+                try {
+                    config[propName] = JSON.parse(propValue);
+                    logger.info(`Auto-fixed: Converted ${propName} to array`);
+                } catch (e) {
+                    // Keep original if parsing fails
+                }
+            } else if (propValue !== undefined && propValue !== null) {
+                // Convert single value to array with that value
+                config[propName] = [propValue];
+                logger.info(`Auto-fixed: Converted ${propName} to array: [${propValue}]`);
+            }
+        }
+    }
+    
+    /**
+     * Apply constraint corrections (min/max values)
+     * @param {Object} config - Configuration to modify
+     * @param {Object} schema - JSON Schema containing constraint information
+     * @private
+     */
+    _applyConstraintCorrections(config, schema) {
+        if (!schema.properties) {
+            return;
+        }
+        
+        for (const [propName, propValue] of Object.entries(config)) {
+            const propSchema = schema.properties && schema.properties[propName];
+            
+            if (!propSchema) {
+                continue;
+            }
+            
+            // Fix numeric constraints
+            if (propSchema.type === 'number' || propSchema.type === 'integer') {
+                this._applyNumericConstraints(config, propName, propValue, propSchema);
+            }
+        }
+    }
+    
+    /**
+     * Apply numeric constraints (min/max)
+     * @param {Object} config - Configuration to modify
+     * @param {string} propName - Property name
+     * @param {number} propValue - Property value
+     * @param {Object} propSchema - Property schema
+     * @private
+     */
+    _applyNumericConstraints(config, propName, propValue, propSchema) {
+        if (propSchema.minimum !== undefined && propValue < propSchema.minimum) {
+            config[propName] = propSchema.minimum;
+            logger.info(`Auto-fixed: Set ${propName} to minimum value: ${propSchema.minimum}`);
+        }
+        
+        if (propSchema.maximum !== undefined && propValue > propSchema.maximum) {
+            config[propName] = propSchema.maximum;
+            logger.info(`Auto-fixed: Set ${propName} to maximum value: ${propSchema.maximum}`);
+        }
+    }
+    
+    /**
+     * Validate all configurations
+     * @param {Array} configs - Configurations to validate
+     * @returns {Object} Validation results
+     */
+    validateAllConfigs(configs) {
+        try {
+            // Initial input validation
+            const inputError = this._validateConfigsInput(configs);
+            if (inputError) {
+                return inputError;
+            }
+            
+            // Process and aggregate results
+            return this._aggregateValidationResults(configs);
+        } catch (error) {
+            logger.error('Error validating all configurations:', error);
+            return {
+                valid: false,
+                errors: [`Validation error: ${error.message}`]
+            };
+        }
+    }
+    
+    /**
+     * Validates an input array to ensure it's a proper array of configurations.
+     * @param {Array} configs - Configurations to validate
+     * @returns {Object|null} Error result object if invalid, null if valid
+     * @private
+     */
+    _validateConfigsInput(configs) {
+        if (!configs || !Array.isArray(configs)) {
+            return {
+                valid: false,
+                errors: ['Configurations must be an array']
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Validates a single configuration within a collection.
+     * @param {Object} config - Configuration to validate
+     * @param {Array} allConfigs - All configurations (for cross-reference)
+     * @returns {Object} Validation result
+     * @private
+     */
+    _validateSingleConfig(config, allConfigs) {
+        // Skip configs without ID
+        if (!config._id) {
+            return null; // Skip this config
+        }
+        
+        // Check if template is specified
+        const templateId = config._template;
+        if (!templateId) {
+            return {
+                valid: false,
+                errors: ['No template specified for configuration']
+            };
+        }
+        
+        // Validate against template
+        return this.validateConfigAgainstTemplate(config, templateId, { configs: allConfigs });
+    }
+
+    /**
+     * Aggregates validation results for each configuration.
+     * @param {Array} configs - Configurations to validate
+     * @returns {Object} Aggregated results
+     * @private
+     */
+    _aggregateValidationResults(configs) {
+        const results = {};
+        let allValid = true;
+        
+        for (const config of configs) {
+            // Skip configs without ID
+            if (!config._id) {
+                continue;
+            }
+            
+            // Validate and store result
+            const result = this._validateSingleConfig(config, configs);
+            
+            // Skip null results (happens when config is invalid but doesn't need reporting)
+            if (result === null) {
+                continue;
+            }
+            
+            // Store the result
+            results[config._id] = result;
+            
+            // Track if all are valid
+            if (!result.valid) {
+                allValid = false;
+            }
+        }
+        
+        return {
+            valid: allValid,
+            results
+        };
     }
 }
 
