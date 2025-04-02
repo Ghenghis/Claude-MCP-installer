@@ -66,7 +66,57 @@ class ConfigTemplateManager {
      * These are the built-in templates that come with the application
      */
     initializeDefaultTemplates() {
-        // Brave Search Server Template
+        // Initialize each server type template using helper methods
+        this._initBraveSearchTemplate();
+        this._initFilesystemTemplate();
+        this._initGithubTemplate();
+        this._initSequentialThinkingTemplate();
+        this._initMemoryTemplate();
+        this._initCustomTemplate();
+        
+        // Continue with other templates as needed
+        logger.info('Default templates initialized successfully');
+    }
+    
+    /**
+     * Creates a base set of common configuration schema properties.
+     * @private
+     * @returns {Object} Object containing common schema properties.
+     */
+    _createCommonSchemaProperties() {
+        return {
+            port: {
+                type: 'number',
+                minimum: 1024,
+                maximum: 65535,
+                default: 3000, // Generic default, override in specific templates
+                description: 'Port number for the server'
+            },
+            host: {
+                type: 'string',
+                default: 'localhost',
+                description: 'Host address for the server'
+            },
+            timeout: {
+                type: 'number',
+                minimum: 1000,
+                default: 30000,
+                description: 'Request timeout in milliseconds'
+            },
+            log_level: {
+                type: 'string',
+                enum: ['error', 'warn', 'info', 'debug'],
+                default: 'info',
+                description: 'Logging level'
+            }
+        };
+    }
+    
+    /**
+     * Initialize the Brave Search MCP server template
+     * @private
+     */
+    _initBraveSearchTemplate() {
         this.defaultTemplates['brave-search'] = {
             id: 'brave-search',
             name: 'Brave Search MCP Server',
@@ -75,23 +125,19 @@ class ConfigTemplateManager {
             serverType: 'brave-search',
             configSchema: {
                 type: 'object',
-                required: ['api_key', 'port', 'host'],
+                required: ['port', 'host', 'api_key'],
                 properties: {
-                    api_key: {
-                        type: 'string',
-                        description: 'Brave Search API key'
-                    },
-                    port: {
+                    ...this._createCommonSchemaProperties(), // Include common properties
+                    port: { // Override default port
                         type: 'number',
                         minimum: 1024,
                         maximum: 65535,
                         default: 3000,
                         description: 'Port number for the server'
                     },
-                    host: {
+                    api_key: {
                         type: 'string',
-                        default: 'localhost',
-                        description: 'Host address for the server'
+                        description: 'Brave Search API key'
                     },
                     timeout: {
                         type: 'number',
@@ -116,11 +162,29 @@ class ConfigTemplateManager {
                         default: 3600,
                         description: 'Cache TTL in seconds'
                     },
-                    log_level: {
-                        type: 'string',
-                        enum: ['error', 'warn', 'info', 'debug'],
-                        default: 'info',
-                        description: 'Logging level'
+                    search_settings: {
+                        type: 'object',
+                        properties: {
+                            default_search_type: {
+                                type: 'string',
+                                enum: ['web', 'news', 'local'],
+                                default: 'web',
+                                description: 'Default search type'
+                            },
+                            default_results_count: {
+                                type: 'number',
+                                minimum: 1,
+                                maximum: 20,
+                                default: 10,
+                                description: 'Default number of results to return'
+                            },
+                            content_filter: {
+                                type: 'string',
+                                enum: ['strict', 'moderate', 'off'],
+                                default: 'moderate',
+                                description: 'Content filter setting'
+                            }
+                        }
                     }
                 }
             },
@@ -131,11 +195,21 @@ class ConfigTemplateManager {
                 max_requests_per_minute: 60,
                 cache_enabled: true,
                 cache_ttl: 3600,
-                log_level: 'info'
+                log_level: 'info',
+                search_settings: {
+                    default_search_type: 'web',
+                    default_results_count: 10,
+                    content_filter: 'moderate'
+                }
             }
         };
-        
-        // Filesystem Server Template
+    }
+    
+    /**
+     * Initialize the Filesystem MCP server template
+     * @private
+     */
+    _initFilesystemTemplate() {
         this.defaultTemplates['filesystem'] = {
             id: 'filesystem',
             name: 'Filesystem MCP Server',
@@ -144,64 +218,66 @@ class ConfigTemplateManager {
             serverType: 'filesystem',
             configSchema: {
                 type: 'object',
-                required: ['port', 'root_directories'],
+                required: ['port', 'host', 'allowed_directories'],
                 properties: {
-                    port: {
+                    ...this._createCommonSchemaProperties(), // Include common properties
+                    port: { // Override default port
                         type: 'number',
                         minimum: 1024,
                         maximum: 65535,
                         default: 3001,
                         description: 'Port number for the server'
                     },
-                    host: {
-                        type: 'string',
-                        default: 'localhost',
-                        description: 'Host address for the server'
-                    },
-                    root_directories: {
+                    allowed_directories: {
                         type: 'array',
                         items: {
                             type: 'string'
                         },
-                        description: 'Root directories the server has access to'
+                        description: 'List of directories that can be accessed'
                     },
-                    allowed_extensions: {
-                        type: 'array',
-                        items: {
-                            type: 'string'
-                        },
-                        description: 'List of allowed file extensions'
+                    timeout: {
+                        type: 'number',
+                        minimum: 1000,
+                        default: 30000,
+                        description: 'File operation timeout in milliseconds'
                     },
                     max_file_size: {
                         type: 'number',
-                        minimum: 1024,
+                        minimum: 1,
                         default: 10485760, // 10MB
                         description: 'Maximum file size in bytes'
                     },
-                    read_only: {
+                    cache_enabled: {
                         type: 'boolean',
-                        default: false,
-                        description: 'Run server in read-only mode'
+                        default: true,
+                        description: 'Enable file caching'
                     },
-                    log_level: {
-                        type: 'string',
-                        enum: ['error', 'warn', 'info', 'debug'],
-                        default: 'info',
-                        description: 'Logging level'
+                    operation_timeout: {
+                        type: 'number',
+                        minimum: 1000,
+                        default: 5000,
+                        description: 'Timeout for file operations in milliseconds'
                     }
                 }
             },
             defaultConfig: {
                 port: 3001,
                 host: 'localhost',
-                root_directories: [],
+                allowed_directories: [],
+                timeout: 30000,
                 max_file_size: 10485760,
-                read_only: false,
-                log_level: 'info'
+                log_level: 'info',
+                cache_enabled: true,
+                operation_timeout: 5000
             }
         };
-        
-        // GitHub MCP Server Template
+    }
+    
+    /**
+     * Initialize the GitHub MCP server template
+     * @private
+     */
+    _initGithubTemplate() {
         this.defaultTemplates['github'] = {
             id: 'github',
             name: 'GitHub MCP Server',
@@ -210,34 +286,30 @@ class ConfigTemplateManager {
             serverType: 'github',
             configSchema: {
                 type: 'object',
-                required: ['access_token', 'port'],
+                required: ['port', 'host', 'auth_token'],
                 properties: {
-                    access_token: {
-                        type: 'string',
-                        description: 'GitHub Personal Access Token'
-                    },
-                    port: {
+                    ...this._createCommonSchemaProperties(), // Include common properties
+                    port: { // Override default port
                         type: 'number',
                         minimum: 1024,
                         maximum: 65535,
                         default: 3002,
                         description: 'Port number for the server'
                     },
-                    host: {
+                    auth_token: {
                         type: 'string',
-                        default: 'localhost',
-                        description: 'Host address for the server'
+                        description: 'GitHub Personal Access Token'
+                    },
+                    api_base_url: {
+                        type: 'string',
+                        default: 'https://api.github.com',
+                        description: 'GitHub API base URL'
                     },
                     timeout: {
                         type: 'number',
                         minimum: 1000,
                         default: 30000,
-                        description: 'Request timeout in milliseconds'
-                    },
-                    rate_limit_enabled: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable GitHub API rate limit handling'
+                        description: 'API request timeout in milliseconds'
                     },
                     cache_enabled: {
                         type: 'boolean',
@@ -250,26 +322,31 @@ class ConfigTemplateManager {
                         default: 300,
                         description: 'Cache TTL in seconds'
                     },
-                    log_level: {
-                        type: 'string',
-                        enum: ['error', 'warn', 'info', 'debug'],
-                        default: 'info',
-                        description: 'Logging level'
+                    rate_limit_handling: {
+                        type: 'boolean',
+                        default: true,
+                        description: 'Enable automatic handling of rate limits'
                     }
                 }
             },
             defaultConfig: {
                 port: 3002,
                 host: 'localhost',
+                api_base_url: 'https://api.github.com',
                 timeout: 30000,
-                rate_limit_enabled: true,
                 cache_enabled: true,
                 cache_ttl: 300,
+                rate_limit_handling: true,
                 log_level: 'info'
             }
         };
-        
-        // Sequential Thinking Server Template
+    }
+    
+    /**
+     * Initialize the Sequential Thinking MCP server template
+     * @private
+     */
+    _initSequentialThinkingTemplate() {
         this.defaultTemplates['sequential-thinking'] = {
             id: 'sequential-thinking',
             name: 'Sequential Thinking MCP Server',
@@ -278,19 +355,15 @@ class ConfigTemplateManager {
             serverType: 'sequential-thinking',
             configSchema: {
                 type: 'object',
-                required: ['port'],
+                required: ['port', 'host'],
                 properties: {
-                    port: {
+                    ...this._createCommonSchemaProperties(), // Include common properties
+                    port: { // Override default port
                         type: 'number',
                         minimum: 1024,
                         maximum: 65535,
                         default: 3003,
                         description: 'Port number for the server'
-                    },
-                    host: {
-                        type: 'string',
-                        default: 'localhost',
-                        description: 'Host address for the server'
                     },
                     max_thoughts: {
                         type: 'number',
@@ -306,11 +379,16 @@ class ConfigTemplateManager {
                         default: 5,
                         description: 'Default number of total thoughts'
                     },
-                    log_level: {
-                        type: 'string',
-                        enum: ['error', 'warn', 'info', 'debug'],
-                        default: 'info',
-                        description: 'Logging level'
+                    thought_validation: {
+                        type: 'boolean',
+                        default: true,
+                        description: 'Enable thought validation'
+                    },
+                    timeout: {
+                        type: 'number',
+                        minimum: 1000,
+                        default: 60000,
+                        description: 'Session timeout in milliseconds'
                     }
                 }
             },
@@ -319,11 +397,18 @@ class ConfigTemplateManager {
                 host: 'localhost',
                 max_thoughts: 20,
                 default_total_thoughts: 5,
+                thought_validation: true,
+                timeout: 60000,
                 log_level: 'info'
             }
         };
-        
-        // Memory MCP Server Template
+    }
+    
+    /**
+     * Initialize the Memory MCP server template
+     * @private
+     */
+    _initMemoryTemplate() {
         this.defaultTemplates['memory'] = {
             id: 'memory',
             name: 'Memory MCP Server',
@@ -332,30 +417,54 @@ class ConfigTemplateManager {
             serverType: 'memory',
             configSchema: {
                 type: 'object',
-                required: ['port', 'storage_type'],
+                required: ['port', 'host'],
                 properties: {
-                    port: {
+                    ...this._createCommonSchemaProperties(), // Include common properties
+                    port: { // Override default port
                         type: 'number',
                         minimum: 1024,
                         maximum: 65535,
                         default: 3004,
                         description: 'Port number for the server'
                     },
-                    host: {
-                        type: 'string',
-                        default: 'localhost',
-                        description: 'Host address for the server'
-                    },
                     storage_type: {
                         type: 'string',
                         enum: ['memory', 'file', 'database'],
-                        default: 'file',
-                        description: 'Type of storage for the memory graph'
+                        default: 'memory',
+                        description: 'Storage type for the memory server'
                     },
                     storage_path: {
                         type: 'string',
-                        default: './memory_data',
-                        description: 'Path for file-based storage'
+                        description: 'Path for file-based storage (if storage_type is file)'
+                    },
+                    database_connection: {
+                        type: 'object',
+                        properties: {
+                            url: {
+                                type: 'string',
+                                description: 'Database connection URL'
+                            },
+                            auth_required: {
+                                type: 'boolean',
+                                default: false,
+                                description: 'Whether authentication is required'
+                            },
+                            username: {
+                                type: 'string',
+                                description: 'Database username'
+                            },
+                            password: {
+                                type: 'string',
+                                description: 'Database password'
+                            }
+                        },
+                        description: 'Database connection details (if storage_type is database)'
+                    },
+                    max_entity_count: {
+                        type: 'number',
+                        minimum: 100,
+                        default: 10000,
+                        description: 'Maximum number of entities to store'
                     },
                     backup_enabled: {
                         type: 'boolean',
@@ -364,30 +473,29 @@ class ConfigTemplateManager {
                     },
                     backup_interval: {
                         type: 'number',
-                        minimum: 300,
+                        minimum: 60,
                         default: 3600,
                         description: 'Backup interval in seconds'
-                    },
-                    log_level: {
-                        type: 'string',
-                        enum: ['error', 'warn', 'info', 'debug'],
-                        default: 'info',
-                        description: 'Logging level'
                     }
                 }
             },
             defaultConfig: {
                 port: 3004,
                 host: 'localhost',
-                storage_type: 'file',
-                storage_path: './memory_data',
+                storage_type: 'memory',
+                max_entity_count: 10000,
                 backup_enabled: true,
                 backup_interval: 3600,
                 log_level: 'info'
             }
         };
-        
-        // Custom Server Template
+    }
+    
+    /**
+     * Initialize the Custom MCP server template
+     * @private
+     */
+    _initCustomTemplate() {
         this.defaultTemplates['custom'] = {
             id: 'custom',
             name: 'Custom MCP Server',
@@ -396,23 +504,19 @@ class ConfigTemplateManager {
             serverType: 'custom',
             configSchema: {
                 type: 'object',
-                required: ['port', 'server_name'],
+                required: ['port', 'server_name', 'command'],
                 properties: {
-                    server_name: {
-                        type: 'string',
-                        description: 'Name of the custom server'
-                    },
-                    port: {
+                    ...this._createCommonSchemaProperties(), // Include common properties
+                    port: { // Override default port
                         type: 'number',
                         minimum: 1024,
                         maximum: 65535,
                         default: 3010,
                         description: 'Port number for the server'
                     },
-                    host: {
+                    server_name: {
                         type: 'string',
-                        default: 'localhost',
-                        description: 'Host address for the server'
+                        description: 'Name of the custom server'
                     },
                     command: {
                         type: 'string',
@@ -429,11 +533,22 @@ class ConfigTemplateManager {
                         },
                         description: 'Environment variables for the server'
                     },
-                    log_level: {
+                    startup_args: {
+                        type: 'array',
+                        items: {
+                            type: 'string'
+                        },
+                        description: 'Command line arguments to pass to the server on startup'
+                    },
+                    health_check_endpoint: {
                         type: 'string',
-                        enum: ['error', 'warn', 'info', 'debug'],
-                        default: 'info',
-                        description: 'Logging level'
+                        description: 'Endpoint for server health checks'
+                    },
+                    health_check_interval: {
+                        type: 'number',
+                        minimum: 1000,
+                        default: 30000,
+                        description: 'Interval for health checks in milliseconds'
                     }
                 }
             },
@@ -441,6 +556,8 @@ class ConfigTemplateManager {
                 port: 3010,
                 host: 'localhost',
                 environment_variables: {},
+                startup_args: [],
+                health_check_interval: 30000,
                 log_level: 'info'
             }
         };

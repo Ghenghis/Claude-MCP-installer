@@ -219,9 +219,9 @@ class AdvancedConfigManager {
     deleteConfig(configId) {
         try {
             // Check if configuration exists
-            if (!this.configs[configId]) {
-                logger.error(`Configuration with ID ${configId} not found`);
-                return false;
+            const config = this._getConfigOrLogError(configId);
+            if (!config) {
+                return false; // Error logged in helper
             }
             
             // Delete configuration
@@ -339,14 +339,11 @@ class AdvancedConfigManager {
      */
     resetConfig(configId) {
         try {
-            // Check if configuration exists
-            if (!this.configs[configId]) {
-                logger.error(`Configuration with ID ${configId} not found`);
-                return null;
+            // Get configuration or log error
+            const config = this._getConfigOrLogError(configId);
+            if (!config) {
+                return null; // Error logged in helper
             }
-            
-            // Get configuration
-            const config = this.configs[configId];
             
             // Get template ID
             const templateId = config._template;
@@ -653,6 +650,23 @@ class AdvancedConfigManager {
             logger.error(`Error generating configuration report for ${configId}:`, error);
             return null;
         }
+    }
+    
+    // --- Private Helper Methods ---
+    
+    /**
+     * Retrieves a configuration by ID, logging an error if not found.
+     * @param {string} configId - Configuration ID
+     * @returns {Object|null} Configuration object or null if not found
+     * @private
+     */
+    _getConfigOrLogError(configId) {
+        const config = this.configs[configId];
+        if (!config) {
+            logger.error(`Configuration with ID ${configId} not found`);
+            return null;
+        }
+        return config;
     }
 }
 
