@@ -41,6 +41,7 @@ temp/
 
 # Test coverage
 coverage/
+.nyc_output/
 
 # Electron build
 electron-builder.yml
@@ -49,5 +50,16 @@ electron-builder.json
 electron-builder-*.json
 
 # Claude Desktop specific
-claude_desktop_config.json
-claude_desktop_config.json.*
+claude-desktop-config/
+
+# Jest
+jest_cache/
+
+# ESLint
+.eslintcache
+
+# Webpack
+.webpack/
+
+# Cache
+.cache/

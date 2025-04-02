@@ -1,6 +1,7 @@
 /**
  * Logger - Handles all logging functionality
  * Provides methods for logging messages with different severity levels
+ * Enhanced with Winston integration for production-ready logging
  */
 class LoggerClass {
     constructor() {
@@ -8,6 +9,51 @@ class LoggerClass {
         this.logLevel = MCPConfig.DEFAULTS.LOG_LEVEL;
         this.logHistory = [];
         this.maxLogEntries = 100;
+        this.initializeWinston();
+    }
+    
+    /**
+     * Initialize Winston logger if available
+     * Falls back to console logging if Winston is not available
+     */
+    initializeWinston() {
+        this.winston = null;
+        
+        try {
+            // Check if Winston is available (in Node.js environment)
+            if (typeof require !== 'undefined') {
+                const winston = require('winston');
+                
+                // Create Winston logger with custom format
+                this.winston = winston.createLogger({
+                    level: 'info',
+                    format: winston.format.combine(
+                        winston.format.timestamp(),
+                        winston.format.json()
+                    ),
+                    defaultMeta: { service: 'mcp-installer' },
+                    transports: [
+                        // Write all logs to console
+                        new winston.transports.Console({
+                            format: winston.format.combine(
+                                winston.format.colorize(),
+                                winston.format.simple()
+                            )
+                        }),
+                        // Write all logs to file
+                        new winston.transports.File({ 
+                            filename: 'logs/error.log', 
+                            level: 'error' 
+                        }),
+                        new winston.transports.File({ 
+                            filename: 'logs/combined.log' 
+                        })
+                    ]
+                });
+            }
+        } catch (error) {
+            console.warn('Winston logger not available, falling back to console logging');
+        }
     }
     
     /**
@@ -33,10 +79,39 @@ class LoggerClass {
             this.addLogToUI(message, type);
         }
         
-        // Console logging for debugging
-        if (MCPConfig.DEBUG) {
+        // Use Winston logger if available, otherwise fall back to console
+        if (this.winston) {
+            this.logToWinston(message, type);
+        } else if (MCPConfig.DEBUG) {
             this.logToConsole(message, type);
         }
+    }
+    
+    /**
+     * Log to Winston logger
+     * @param {string} message - The message to log
+     * @param {string} type - The type of log
+     */
+    logToWinston(message, type) {
+        const logLevel = this.mapTypeToWinstonLevel(type);
+        this.winston[logLevel](message);
+    }
+    
+    /**
+     * Map UI log type to Winston log level
+     * @param {string} type - UI log type
+     * @returns {string} Winston log level
+     */
+    mapTypeToWinstonLevel(type) {
+        const typeMap = {
+            'success': 'info',
+            'error': 'error',
+            'warning': 'warn',
+            'info': 'info',
+            'debug': 'debug'
+        };
+        
+        return typeMap[type] || 'info';
     }
     
     /**
@@ -50,53 +125,60 @@ class LoggerClass {
         timestamp.className = 'log-timestamp';
         timestamp.textContent = new Date().toLocaleTimeString();
         
-        const icon = document.createElement('i');
-        icon.className = this.getIconForType(type);
-        
         const messageSpan = document.createElement('span');
+        messageSpan.className = 'log-message';
         messageSpan.textContent = message;
         
         logEntry.appendChild(timestamp);
-        logEntry.appendChild(icon);
         logEntry.appendChild(messageSpan);
         
         this.logContainer.appendChild(logEntry);
+        
+        // Auto-scroll to bottom
         this.logContainer.scrollTop = this.logContainer.scrollHeight;
-    }
-    
-    /**
-     * Get appropriate icon for log type
-     */
-    getIconForType(type) {
-        switch(type) {
-            case 'success': return 'fas fa-check-circle';
-            case 'error': return 'fas fa-times-circle';
-            case 'warning': return 'fas fa-exclamation-triangle';
-            case 'info': 
-            default: return 'fas fa-info-circle';
-        }
     }
     
     /**
      * Log to console with appropriate styling
      */
     logToConsole(message, type) {
-        const styles = {
-            success: 'color: green; font-weight: bold',
-            error: 'color: red; font-weight: bold',
-            warning: 'color: orange; font-weight: bold',
-            info: 'color: blue'
-        };
+        const timestamp = new Date().toLocaleTimeString();
+        const formattedMessage = `[${timestamp}] ${message}`;
         
-        console.log(`%c[${type.toUpperCase()}] ${message}`, styles[type] || styles.info);
+        switch (type) {
+            case 'success':
+                console.log('%c' + formattedMessage, 'color: green');
+                break;
+            case 'error':
+                console.error(formattedMessage);
+                break;
+            case 'warning':
+                console.warn(formattedMessage);
+                break;
+            case 'debug':
+                console.debug(formattedMessage);
+                break;
+            default:
+                console.info(formattedMessage);
+        }
+    }
+    
+    /**
+     * Clear log container
+     */
+    clearLogs() {
+        if (this.logContainer) {
+            this.logContainer.innerHTML = '';
+        }
+        this.logHistory = [];
     }
     
     /**
      * Export logs to file
      */
     exportLogs() {
-        const logText = this.logHistory.map(entry => 
-            `[${entry.timestamp.toISOString()}] [${entry.type.toUpperCase()}] ${entry.message}`
+        const logText = this.logHistory.map(log => 
+            `[${log.timestamp.toLocaleString()}] [${log.type.toUpperCase()}] ${log.message}`
         ).join('\n');
         
         const blob = new Blob([logText], { type: 'text/plain' });
@@ -104,13 +186,19 @@ class LoggerClass {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `mcp-installer-logs-${new Date().toISOString().slice(0,10)}.txt`;
+        a.download = `mcp-installer-logs-${new Date().toISOString().slice(0, 10)}.txt`;
         a.click();
         
         URL.revokeObjectURL(url);
-        this.log('Logs exported successfully', 'success');
     }
 }
 
 // Create singleton instance
 const Logger = new LoggerClass();
+
+// Export for both browser and Node.js environments
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Logger;
+} else {
+    window.Logger = Logger;
+}
