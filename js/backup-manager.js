@@ -1,5 +1,6 @@
 /**
  * Backup Manager - Handles comprehensive backup and restore functionality for MCP servers
+ * Coordinates between specialized modules for backup operations
  */
 class BackupManager {
     constructor(options = {}) {
@@ -14,7 +15,6 @@ class BackupManager {
         };
         this.currentBackupId = null;
         this.currentServerId = null;
-        this.eventListeners = {};
     }
 
     /**
@@ -29,7 +29,7 @@ class BackupManager {
             console.log('Backup manager initialized');
             
             // Trigger initialized event
-            this.triggerEvent('initialized', { backups: this.backups });
+            window.BackupEvents.trigger('initialized', { backups: this.backups });
             
             return true;
         } catch (error) {
@@ -44,14 +44,8 @@ class BackupManager {
      */
     async loadBackups() {
         try {
-            // In a real implementation, we would load backups from disk
-            // For now, we'll load from localStorage
-            const backupsJson = localStorage.getItem('mcp_backups');
-            this.backups = backupsJson ? JSON.parse(backupsJson) : [];
-            
-            // Sort backups by date (newest first)
-            this.backups.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            
+            // Use the core module to load backups
+            this.backups = await window.BackupCore.loadBackups();
             return this.backups;
         } catch (error) {
             console.error('Error loading backups:', error);
@@ -66,9 +60,8 @@ class BackupManager {
      */
     async saveBackups() {
         try {
-            // In a real implementation, we would save backup metadata to disk
-            // For now, we'll save to localStorage
-            localStorage.setItem('mcp_backups', JSON.stringify(this.backups));
+            // Use the core module to save backups
+            await window.BackupCore.saveBackups(this.backups);
         } catch (error) {
             console.error('Error saving backups:', error);
         }
@@ -97,7 +90,7 @@ class BackupManager {
             }
             
             // Create backup ID
-            const backupId = this.generateBackupId(serverId);
+            const backupId = window.BackupCore.generateBackupId(serverId);
             this.currentBackupId = backupId;
             
             // Create backup metadata
@@ -120,7 +113,7 @@ class BackupManager {
             await this.saveBackups();
             
             // Trigger backup started event
-            this.triggerEvent('backupStarted', { backup: metadata });
+            window.BackupEvents.trigger('backupStarted', { backup: metadata });
             
             // Perform backup
             const result = await this.performBackup(serverId, backupId, options);
@@ -135,7 +128,7 @@ class BackupManager {
             await this.saveBackups();
             
             // Trigger backup completed event
-            this.triggerEvent('backupCompleted', { backup: metadata });
+            window.BackupEvents.trigger('backupCompleted', { backup: metadata });
             
             this.backupInProgress = false;
             this.currentBackupId = null;
@@ -154,7 +147,7 @@ class BackupManager {
             }
             
             // Trigger backup failed event
-            this.triggerEvent('backupFailed', { 
+            window.BackupEvents.trigger('backupFailed', { 
                 backupId: this.currentBackupId,
                 serverId: this.currentServerId,
                 error: error.message
@@ -177,19 +170,24 @@ class BackupManager {
      */
     async performBackup(serverId, backupId, options = {}) {
         // Create backup directory structure
-        const backupDir = await this.createBackupDirectory(backupId);
+        const backupDir = await window.BackupCore.createBackupDirectory(backupId, this.options);
         
         const items = [];
         let totalSize = 0;
         
         // Backup configuration files
         if (options.type === 'full' || options.type === 'config') {
-            const configResult = await this.backupConfigFiles(serverId, backupId, backupDir);
+            const configResult = await window.BackupOperations.backupConfigFiles(
+                serverId, 
+                backupId, 
+                backupDir, 
+                data => window.BackupEvents.trigger('backupProgress', data)
+            );
             items.push(...configResult.items);
             totalSize += configResult.totalSize;
             
             // Trigger progress event
-            this.triggerEvent('backupProgress', {
+            window.BackupEvents.trigger('backupProgress', {
                 backupId,
                 serverId,
                 progress: 33,
@@ -199,12 +197,18 @@ class BackupManager {
         
         // Backup data files
         if (options.type === 'full' || options.type === 'data') {
-            const dataResult = await this.backupDataFiles(serverId, backupId, backupDir, options);
+            const dataResult = await window.BackupOperations.backupDataFiles(
+                serverId, 
+                backupId, 
+                backupDir, 
+                options,
+                data => window.BackupEvents.trigger('backupProgress', data)
+            );
             items.push(...dataResult.items);
             totalSize += dataResult.totalSize;
             
             // Trigger progress event
-            this.triggerEvent('backupProgress', {
+            window.BackupEvents.trigger('backupProgress', {
                 backupId,
                 serverId,
                 progress: 66,
@@ -214,12 +218,17 @@ class BackupManager {
         
         // Backup logs if requested
         if (options.includeLogs) {
-            const logsResult = await this.backupLogFiles(serverId, backupId, backupDir);
+            const logsResult = await window.BackupOperations.backupLogFiles(
+                serverId, 
+                backupId, 
+                backupDir,
+                data => window.BackupEvents.trigger('backupProgress', data)
+            );
             items.push(...logsResult.items);
             totalSize += logsResult.totalSize;
             
             // Trigger progress event
-            this.triggerEvent('backupProgress', {
+            window.BackupEvents.trigger('backupProgress', {
                 backupId,
                 serverId,
                 progress: 90,
@@ -237,10 +246,10 @@ class BackupManager {
         };
         
         // Save manifest
-        await this.saveBackupManifest(backupId, manifest);
+        await window.BackupCore.saveBackupManifest(backupId, manifest, this.options);
         
         // Trigger progress event
-        this.triggerEvent('backupProgress', {
+        window.BackupEvents.trigger('backupProgress', {
             backupId,
             serverId,
             progress: 100,
@@ -282,7 +291,7 @@ class BackupManager {
             }
             
             // Trigger restore started event
-            this.triggerEvent('restoreStarted', { 
+            window.BackupEvents.trigger('restoreStarted', { 
                 backup,
                 server,
                 options
@@ -292,7 +301,7 @@ class BackupManager {
             const result = await this.performRestore(backup, options);
             
             // Trigger restore completed event
-            this.triggerEvent('restoreCompleted', { 
+            window.BackupEvents.trigger('restoreCompleted', { 
                 backup,
                 server,
                 result
@@ -307,7 +316,7 @@ class BackupManager {
             console.error('Error restoring backup:', error);
             
             // Trigger restore failed event
-            this.triggerEvent('restoreFailed', { 
+            window.BackupEvents.trigger('restoreFailed', { 
                 backupId,
                 serverId: backup.serverId,
                 error: error.message
@@ -329,14 +338,17 @@ class BackupManager {
      */
     async performRestore(backup, options = {}) {
         // Load backup manifest
-        const manifest = await this.loadBackupManifest(backup.id);
+        const manifest = await window.BackupCore.loadBackupManifest(backup.id, this.options);
         
         // Stop the server if it's running
         if (options.stopServer !== false) {
-            await this.stopServer(backup.serverId);
+            await window.BackupOperations.stopServer(
+                backup.serverId,
+                data => window.BackupEvents.trigger('restoreProgress', data)
+            );
             
             // Trigger progress event
-            this.triggerEvent('restoreProgress', {
+            window.BackupEvents.trigger('restoreProgress', {
                 backupId: backup.id,
                 serverId: backup.serverId,
                 progress: 10,
@@ -346,10 +358,15 @@ class BackupManager {
         
         // Restore configuration files
         if (options.restoreConfig !== false) {
-            await this.restoreConfigFiles(backup.serverId, manifest, options);
+            await window.BackupOperations.restoreConfigFiles(
+                backup.serverId, 
+                manifest, 
+                options,
+                data => window.BackupEvents.trigger('restoreProgress', data)
+            );
             
             // Trigger progress event
-            this.triggerEvent('restoreProgress', {
+            window.BackupEvents.trigger('restoreProgress', {
                 backupId: backup.id,
                 serverId: backup.serverId,
                 progress: 40,
@@ -359,10 +376,15 @@ class BackupManager {
         
         // Restore data files
         if (options.restoreData !== false) {
-            await this.restoreDataFiles(backup.serverId, manifest, options);
+            await window.BackupOperations.restoreDataFiles(
+                backup.serverId, 
+                manifest, 
+                options,
+                data => window.BackupEvents.trigger('restoreProgress', data)
+            );
             
             // Trigger progress event
-            this.triggerEvent('restoreProgress', {
+            window.BackupEvents.trigger('restoreProgress', {
                 backupId: backup.id,
                 serverId: backup.serverId,
                 progress: 70,
@@ -372,10 +394,13 @@ class BackupManager {
         
         // Start the server if it was running
         if (options.startServer !== false) {
-            await this.startServer(backup.serverId);
+            await window.BackupOperations.startServer(
+                backup.serverId,
+                data => window.BackupEvents.trigger('restoreProgress', data)
+            );
             
             // Trigger progress event
-            this.triggerEvent('restoreProgress', {
+            window.BackupEvents.trigger('restoreProgress', {
                 backupId: backup.id,
                 serverId: backup.serverId,
                 progress: 90,
@@ -384,7 +409,7 @@ class BackupManager {
         }
         
         // Trigger progress event
-        this.triggerEvent('restoreProgress', {
+        window.BackupEvents.trigger('restoreProgress', {
             backupId: backup.id,
             serverId: backup.serverId,
             progress: 100,
@@ -411,14 +436,14 @@ class BackupManager {
         
         try {
             // Delete backup files
-            await this.deleteBackupFiles(backupId);
+            await window.BackupCore.deleteBackupFiles(backupId, this.options);
             
             // Remove from backups list
             this.backups = this.backups.filter(b => b.id !== backupId);
             await this.saveBackups();
             
             // Trigger backup deleted event
-            this.triggerEvent('backupDeleted', { backupId });
+            window.BackupEvents.trigger('backupDeleted', { backupId });
             
             return true;
         } catch (error) {
@@ -433,7 +458,7 @@ class BackupManager {
      * @returns {Object} Backup metadata
      */
     getBackupById(backupId) {
-        return this.backups.find(b => b.id === backupId);
+        return window.BackupCore.getBackupById(this.backups, backupId);
     }
 
     /**
@@ -442,7 +467,7 @@ class BackupManager {
      * @returns {Array} Backups for the server
      */
     getBackupsForServer(serverId) {
-        return this.backups.filter(b => b.serverId === serverId);
+        return window.BackupCore.getBackupsForServer(this.backups, serverId);
     }
 
     /**
@@ -451,354 +476,6 @@ class BackupManager {
      */
     getAllBackups() {
         return [...this.backups];
-    }
-
-    /**
-     * Create a backup directory
-     * @param {string} backupId - Backup ID
-     * @returns {Promise<string>} Backup directory path
-     */
-    async createBackupDirectory(backupId) {
-        try {
-            // Create main backup directory
-            const backupDir = `${this.options.backupBasePath || './backups'}/${backupId}`;
-            
-            // Create directory structure using the file system API
-            await window.FileSystemAPI.createDirectory(backupDir);
-            await window.FileSystemAPI.createDirectory(`${backupDir}/config`);
-            await window.FileSystemAPI.createDirectory(`${backupDir}/data`);
-            
-            if (this.options.includeLogs) {
-                await window.FileSystemAPI.createDirectory(`${backupDir}/logs`);
-            }
-            
-            return backupDir;
-        } catch (error) {
-            console.error('Error creating backup directory:', error);
-            throw new Error(`Failed to create backup directory: ${error.message}`);
-        }
-    }
-
-    /**
-     * Backup configuration files
-     * @param {string} serverId - Server ID
-     * @param {string} backupId - Backup ID
-     * @param {string} backupDir - Backup directory path
-     * @returns {Promise<Object>} Backup result
-     */
-    async backupConfigFiles(serverId, backupId, backupDir) {
-        try {
-            const server = await this.getServerInfo(serverId);
-            const configDir = `${server.installPath}/config`;
-            const backupConfigDir = `${backupDir}/config`;
-            
-            // Get list of configuration files
-            const configFiles = await window.FileSystemAPI.listFiles(configDir, '*.json');
-            
-            const items = [];
-            let totalSize = 0;
-            
-            // Copy each configuration file
-            for (const file of configFiles) {
-                // Update progress
-                this.triggerEvent('backupProgress', {
-                    backupId,
-                    serverId,
-                    progress: 10,
-                    message: `Backing up configuration file: ${file.name}`
-                });
-                
-                // Read file content
-                const content = await window.FileSystemAPI.readFile(`${configDir}/${file.name}`);
-                
-                // Write to backup location
-                await window.FileSystemAPI.writeFile(`${backupConfigDir}/${file.name}`, content);
-                
-                // Add to items
-                items.push({
-                    type: 'config',
-                    path: `config/${file.name}`,
-                    originalPath: `${configDir}/${file.name}`,
-                    size: content.length
-                });
-                
-                totalSize += content.length;
-            }
-            
-            return { items, totalSize };
-        } catch (error) {
-            console.error('Error backing up configuration files:', error);
-            throw new Error(`Failed to backup configuration files: ${error.message}`);
-        }
-    }
-
-    /**
-     * Backup data files
-     * @param {string} serverId - Server ID
-     * @param {string} backupId - Backup ID
-     * @param {string} backupDir - Backup directory path
-     * @param {Object} options - Backup options
-     * @returns {Promise<Object>} Backup result
-     */
-    async backupDataFiles(serverId, backupId, backupDir, options = {}) {
-        try {
-            const server = await this.getServerInfo(serverId);
-            const dataDir = `${server.installPath}/data`;
-            const backupDataDir = `${backupDir}/data`;
-            
-            // Get list of data files (excluding large binary files if specified)
-            let excludePatterns = options.excludePatterns || [];
-            if (options.excludeLargeFiles) {
-                excludePatterns.push('*.bin', '*.dat', '*.db');
-            }
-            
-            const dataFiles = await window.FileSystemAPI.listFiles(dataDir, '*', excludePatterns);
-            
-            const items = [];
-            let totalSize = 0;
-            let fileCount = 0;
-            
-            // Copy each data file
-            for (const file of dataFiles) {
-                fileCount++;
-                
-                // Update progress
-                this.triggerEvent('backupProgress', {
-                    backupId,
-                    serverId,
-                    progress: Math.min(50 + Math.floor((fileCount / dataFiles.length) * 30), 80),
-                    message: `Backing up data file: ${file.name}`
-                });
-                
-                // Read file content
-                const content = await window.FileSystemAPI.readFile(`${dataDir}/${file.name}`);
-                
-                // Write to backup location
-                await window.FileSystemAPI.writeFile(`${backupDataDir}/${file.name}`, content);
-                
-                // Add to items
-                items.push({
-                    type: 'data',
-                    path: `data/${file.name}`,
-                    originalPath: `${dataDir}/${file.name}`,
-                    size: content.length
-                });
-                
-                totalSize += content.length;
-            }
-            
-            return { items, totalSize };
-        } catch (error) {
-            console.error('Error backing up data files:', error);
-            throw new Error(`Failed to backup data files: ${error.message}`);
-        }
-    }
-
-    /**
-     * Backup log files
-     * @param {string} serverId - Server ID
-     * @param {string} backupId - Backup ID
-     * @param {string} backupDir - Backup directory path
-     * @returns {Promise<Object>} Backup result
-     */
-    async backupLogFiles(serverId, backupId, backupDir) {
-        try {
-            const server = await this.getServerInfo(serverId);
-            const logsDir = `${server.installPath}/logs`;
-            const backupLogsDir = `${backupDir}/logs`;
-            
-            // Get list of log files
-            const logFiles = await window.FileSystemAPI.listFiles(logsDir, '*.log');
-            
-            const items = [];
-            let totalSize = 0;
-            
-            // Copy each log file
-            for (const file of logFiles) {
-                // Read file content
-                const content = await window.FileSystemAPI.readFile(`${logsDir}/${file.name}`);
-                
-                // Write to backup location
-                await window.FileSystemAPI.writeFile(`${backupLogsDir}/${file.name}`, content);
-                
-                // Add to items
-                items.push({
-                    type: 'log',
-                    path: `logs/${file.name}`,
-                    originalPath: `${logsDir}/${file.name}`,
-                    size: content.length
-                });
-                
-                totalSize += content.length;
-            }
-            
-            return { items, totalSize };
-        } catch (error) {
-            console.error('Error backing up log files:', error);
-            throw new Error(`Failed to backup log files: ${error.message}`);
-        }
-    }
-
-    /**
-     * Save backup manifest
-     * @param {string} backupId - Backup ID
-     * @param {Object} manifest - Backup manifest
-     * @returns {Promise<void>}
-     */
-    async saveBackupManifest(backupId, manifest) {
-        try {
-            const backupDir = `${this.options.backupBasePath || './backups'}/${backupId}`;
-            const manifestPath = `${backupDir}/manifest.json`;
-            
-            // Write manifest file
-            await window.FileSystemAPI.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-        } catch (error) {
-            console.error('Error saving backup manifest:', error);
-            throw new Error(`Failed to save backup manifest: ${error.message}`);
-        }
-    }
-
-    /**
-     * Load backup manifest
-     * @param {string} backupId - Backup ID
-     * @returns {Promise<Object>} Backup manifest
-     */
-    async loadBackupManifest(backupId) {
-        try {
-            const backupDir = `${this.options.backupBasePath || './backups'}/${backupId}`;
-            const manifestPath = `${backupDir}/manifest.json`;
-            
-            // Read manifest file
-            const content = await window.FileSystemAPI.readFile(manifestPath);
-            
-            return JSON.parse(content);
-        } catch (error) {
-            console.error('Error loading backup manifest:', error);
-            throw new Error(`Failed to load backup manifest: ${error.message}`);
-        }
-    }
-
-    /**
-     * Delete backup files
-     * @param {string} backupId - Backup ID
-     * @returns {Promise<void>}
-     */
-    async deleteBackupFiles(backupId) {
-        try {
-            const backupDir = `${this.options.backupBasePath || './backups'}/${backupId}`;
-            
-            // Delete backup directory
-            await window.FileSystemAPI.deleteDirectory(backupDir, true);
-        } catch (error) {
-            console.error('Error deleting backup files:', error);
-            throw new Error(`Failed to delete backup files: ${error.message}`);
-        }
-    }
-
-    /**
-     * Restore configuration files
-     * @param {string} serverId - Server ID
-     * @param {Object} manifest - Backup manifest
-     * @param {Object} options - Restore options
-     * @returns {Promise<void>}
-     */
-    async restoreConfigFiles(serverId, manifest, options = {}) {
-        try {
-            const server = await this.getServerInfo(serverId);
-            const configDir = `${server.installPath}/config`;
-            const backupDir = `${this.options.backupBasePath || './backups'}/${manifest.id}`;
-            
-            // Get configuration items from manifest
-            const configItems = manifest.items.filter(item => item.type === 'config');
-            
-            // Create backup of current configuration if requested
-            if (options.createBackupBeforeRestore) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const configBackupDir = `${configDir}_backup_${timestamp}`;
-                
-                // Copy current config directory
-                await window.FileSystemAPI.copyDirectory(configDir, configBackupDir);
-            }
-            
-            // Restore each configuration file
-            for (const item of configItems) {
-                // Read backup file
-                const content = await window.FileSystemAPI.readFile(`${backupDir}/${item.path}`);
-                
-                // Write to original location
-                await window.FileSystemAPI.writeFile(item.originalPath, content);
-            }
-        } catch (error) {
-            console.error('Error restoring configuration files:', error);
-            throw new Error(`Failed to restore configuration files: ${error.message}`);
-        }
-    }
-
-    /**
-     * Restore data files
-     * @param {string} serverId - Server ID
-     * @param {Object} manifest - Backup manifest
-     * @param {Object} options - Restore options
-     * @returns {Promise<void>}
-     */
-    async restoreDataFiles(serverId, manifest, options = {}) {
-        try {
-            const server = await this.getServerInfo(serverId);
-            const dataDir = `${server.installPath}/data`;
-            const backupDir = `${this.options.backupBasePath || './backups'}/${manifest.id}`;
-            
-            // Get data items from manifest
-            const dataItems = manifest.items.filter(item => item.type === 'data');
-            
-            // Create backup of current data if requested
-            if (options.createBackupBeforeRestore) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const dataBackupDir = `${dataDir}_backup_${timestamp}`;
-                
-                // Copy current data directory
-                await window.FileSystemAPI.copyDirectory(dataDir, dataBackupDir);
-            }
-            
-            // Restore each data file
-            for (const item of dataItems) {
-                // Read backup file
-                const content = await window.FileSystemAPI.readFile(`${backupDir}/${item.path}`);
-                
-                // Write to original location
-                await window.FileSystemAPI.writeFile(item.originalPath, content);
-            }
-        } catch (error) {
-            console.error('Error restoring data files:', error);
-            throw new Error(`Failed to restore data files: ${error.message}`);
-        }
-    }
-
-    /**
-     * Stop a server
-     * @param {string} serverId - Server ID
-     * @returns {Promise<void>}
-     */
-    async stopServer(serverId) {
-        // In a real implementation, we would stop the server
-        // For now, we'll just log it
-        console.log(`Stopping server: ${serverId}`);
-        
-        // Simulate delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    /**
-     * Start a server
-     * @param {string} serverId - Server ID
-     * @returns {Promise<void>}
-     */
-    async startServer(serverId) {
-        // In a real implementation, we would start the server
-        // For now, we'll just log it
-        console.log(`Starting server: ${serverId}`);
-        
-        // Simulate delay
-        await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     /**
@@ -846,132 +523,13 @@ class BackupManager {
     }
 
     /**
-     * Get server configuration files
-     * @param {string} serverId - Server ID
-     * @returns {Promise<Array>} Configuration files
-     */
-    async getServerConfigFiles(serverId) {
-        // In a real implementation, we would get configuration files from the server
-        // For now, we'll return mock data
-        return [
-            {
-                name: 'config.json',
-                path: '/app/config.json',
-                size: 1024
-            },
-            {
-                name: 'settings.json',
-                path: '/app/settings.json',
-                size: 512
-            },
-            {
-                name: '.env',
-                path: '/app/.env',
-                size: 256
-            }
-        ];
-    }
-
-    /**
-     * Get server data directories
-     * @param {string} serverId - Server ID
-     * @returns {Promise<Array>} Data directories
-     */
-    async getServerDataDirectories(serverId) {
-        // In a real implementation, we would get data directories from the server
-        // For now, we'll return mock data
-        return [
-            {
-                name: 'data',
-                path: '/app/data',
-                size: 10240
-            },
-            {
-                name: 'uploads',
-                path: '/app/uploads',
-                size: 20480
-            },
-            {
-                name: 'cache',
-                path: '/app/cache',
-                size: 5120
-            }
-        ];
-    }
-
-    /**
-     * Get server log files
-     * @param {string} serverId - Server ID
-     * @returns {Promise<Array>} Log files
-     */
-    async getServerLogFiles(serverId) {
-        // In a real implementation, we would get log files from the server
-        // For now, we'll return mock data
-        return [
-            {
-                name: 'app.log',
-                path: '/app/logs/app.log',
-                size: 2048
-            },
-            {
-                name: 'error.log',
-                path: '/app/logs/error.log',
-                size: 1024
-            },
-            {
-                name: 'access.log',
-                path: '/app/logs/access.log',
-                size: 4096
-            }
-        ];
-    }
-
-    /**
-     * Get file content
-     * @param {string} serverId - Server ID
-     * @param {string} filePath - File path
-     * @returns {Promise<string>} File content
-     */
-    async getFileContent(serverId, filePath) {
-        // In a real implementation, we would get file content from the server
-        // For now, we'll return mock data
-        return `Mock content for ${filePath}`;
-    }
-
-    /**
-     * Get directory size
-     * @param {string} serverId - Server ID
-     * @param {string} dirPath - Directory path
-     * @returns {Promise<number>} Directory size in bytes
-     */
-    async getDirectorySize(serverId, dirPath) {
-        // In a real implementation, we would get directory size from the server
-        // For now, we'll return mock data
-        return 1024 * 1024; // 1MB
-    }
-
-    /**
-     * Generate a backup ID
-     * @param {string} serverId - Server ID
-     * @returns {string} Backup ID
-     */
-    generateBackupId(serverId) {
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 10);
-        return `backup_${serverId}_${timestamp}_${random}`;
-    }
-
-    /**
      * Add event listener
      * @param {string} event - Event name
      * @param {Function} callback - Callback function
      */
     on(event, callback) {
-        if (!this.eventListeners[event]) {
-            this.eventListeners[event] = [];
-        }
-        
-        this.eventListeners[event].push(callback);
+        window.BackupEvents.on(event, callback);
+        return this;
     }
 
     /**
@@ -980,11 +538,8 @@ class BackupManager {
      * @param {Function} callback - Callback function
      */
     off(event, callback) {
-        if (!this.eventListeners[event]) {
-            return;
-        }
-        
-        this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
+        window.BackupEvents.off(event, callback);
+        return this;
     }
 
     /**
@@ -993,13 +548,8 @@ class BackupManager {
      * @param {Object} data - Event data
      */
     triggerEvent(event, data) {
-        if (!this.eventListeners[event]) {
-            return;
-        }
-        
-        for (const callback of this.eventListeners[event]) {
-            callback(data);
-        }
+        window.BackupEvents.trigger(event, data);
+        return this;
     }
 }
 
@@ -1007,10 +557,14 @@ class BackupManager {
 window.BackupManager = BackupManager;
 
 // Initialize the backup manager when the DOM is loaded
-document.addEventListener('DOMContentLoaded', async function() {
-    // Create a global instance for use by other components
-    window.backupManager = new BackupManager();
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure required modules are loaded
+    if (!window.BackupCore || !window.BackupOperations || !window.BackupEvents) {
+        console.error('Required backup modules not loaded. Make sure to include backup-core.js, backup-operations.js, and backup-events.js before backup-manager.js');
+        return;
+    }
     
-    // Initialize the backup manager
-    await window.backupManager.initialize();
+    // Initialize backup manager
+    const backupManager = new BackupManager();
+    backupManager.initialize();
 });

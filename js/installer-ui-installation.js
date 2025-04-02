@@ -6,15 +6,17 @@
 /**
  * Start the installation process
  */
-function startInstallation() {
-    // Get installation parameters
-    const installParams = getInstallationParameters();
+function startInstallation(params) {
+    // If params not provided, get them from the UI
+    if (!params) {
+        params = getInstallationParameters();
+    }
     
     // Show UI elements for installation
     updateUIForInstallationStart();
     
     // Check prerequisites and continue installation
-    checkPrerequisitesAndContinue(installParams);
+    checkPrerequisitesAndContinue(params);
 }
 
 /**
@@ -178,11 +180,7 @@ function simulateInstallation(installParams) {
     const { templateName, repoUrl, methodName, methodId, installPath } = installParams;
     
     // Get progress elements
-    const progressElements = {
-        progressBar: document.getElementById('progress-bar'),
-        progressPercent: document.getElementById('progress-percent'),
-        progressStatus: document.getElementById('progress-status')
-    };
+    const progressElements = getProgressElements();
     
     // Initialize progress
     let progress = 5;
@@ -195,49 +193,59 @@ function simulateInstallation(installParams) {
         installPath,
         progressElements,
         templateName,
-        methodName
+        methodName,
+        progress
     };
     
     // Log installation start
-    logMessage(`Starting installation of ${templateName} using ${methodName}...`, 'info');
+    logInstallationStart(installParams.templateId);
     
-    // Simulate progress updates
+    // Simulate installation command
+    const installCommand = getInstallationCommand(methodId, repoUrl, installParams.templateId, installPath);
+    logMessage(`Executing: ${installCommand}`, 'command');
+    
+    // Start progress simulation
     const interval = setInterval(() => {
-        progress += 5;
-        
-        updateProgress(progressElements, progress);
+        // Increment progress
+        installContext.progress += 1;
         
         // Handle progress milestones
-        handleProgressMilestone({ ...installContext, progress });
+        handleProgressMilestone(installContext);
         
-        // Check if installation is complete
-        if (progress === 100) {
+        // Update UI
+        updateProgress(
+            progressElements, 
+            installContext.progress, 
+            progressElements.progressStatus.textContent
+        );
+        
+        // Complete installation when done
+        if (installContext.progress >= 100) {
             completeInstallation(interval, progressElements);
         }
-    }, 500);
+    }, 100);
 }
 
 /**
  * Handle progress milestones during installation
- * @param {Object} installContext - Installation context object containing:
- * @param {number} installContext.progress - Current progress percentage
- * @param {Object} installContext.progressElements - Progress UI elements
- * @param {string} installContext.methodId - Installation method ID
- * @param {string} installContext.repoUrl - Repository URL
- * @param {string} installContext.installPath - Installation path
+ * @param {Object} installContext - Installation context object
  */
 function handleProgressMilestone(installContext) {
-    // Handle different progress milestones
-    if (installContext.progress <= 20) {
+    const { progress } = installContext;
+    
+    // Handle different stages of installation
+    if (progress <= 20) {
         handleEarlyProgressStage(installContext);
-    } else if (installContext.progress <= 40) {
+    } else if (progress <= 40) {
         handleMidProgressStage(installContext);
-    } else if (installContext.progress <= 60) {
+    } else if (progress <= 60) {
         handleLateProgressStage(installContext);
-    } else if (installContext.progress <= 80) {
+    } else if (progress <= 80) {
         handleFinalProgressStage(installContext);
-    } else if (installContext.progress <= 90) {
+    } else if (progress <= 90) {
         handleVerificationStage(installContext);
+    } else {
+        // Final stage - no specific updates needed
     }
 }
 
@@ -248,10 +256,12 @@ function handleProgressMilestone(installContext) {
 function handleEarlyProgressStage(installContext) {
     const { progress, progressElements } = installContext;
     
-    if (progress === 20) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Downloading dependencies...';
-        logMessage('Downloading dependencies...', 'info');
+    if (progress === 10) {
+        updateProgressStatus(progressElements, 'Downloading MCP server components...');
+    } else if (progress === 15) {
+        updateProgressStatus(progressElements, 'Preparing installation environment...');
+    } else if (progress === 20) {
+        updateProgressStatus(progressElements, 'Setting up directory structure...');
     }
 }
 
@@ -262,10 +272,12 @@ function handleEarlyProgressStage(installContext) {
 function handleMidProgressStage(installContext) {
     const { progress, progressElements } = installContext;
     
-    if (progress === 40) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Installing packages...';
-        logMessage('Installing packages...', 'info');
+    if (progress === 25) {
+        updateProgressStatus(progressElements, 'Installing core MCP server components...');
+    } else if (progress === 30) {
+        updateProgressStatus(progressElements, 'Configuring server settings...');
+    } else if (progress === 40) {
+        updateProgressStatus(progressElements, 'Installing dependencies...');
     }
 }
 
@@ -274,12 +286,23 @@ function handleMidProgressStage(installContext) {
  * @param {Object} installContext - Installation context object
  */
 function handleLateProgressStage(installContext) {
-    const { progress, progressElements } = installContext;
+    const { progress, progressElements, methodId } = installContext;
     
-    if (progress === 60) {
-        updateProgressStatus(progressElements, 'Configuring server...');
-        installMcpServersAndUpdateConfig(installContext);
-        logConfigurationFilePath(installContext);
+    if (progress === 45) {
+        updateProgressStatus(progressElements, 'Setting up server configuration...');
+    } else if (progress === 50) {
+        updateProgressStatus(progressElements, 'Installing MCP server modules...');
+    } else if (progress === 55) {
+        // Method-specific messages
+        if (methodId === 'docker') {
+            updateProgressStatus(progressElements, 'Building Docker containers...');
+        } else if (methodId === 'python') {
+            updateProgressStatus(progressElements, 'Setting up Python environment...');
+        } else {
+            updateProgressStatus(progressElements, 'Configuring Node.js environment...');
+        }
+    } else if (progress === 60) {
+        updateProgressStatus(progressElements, 'Finalizing server installation...');
     }
 }
 
@@ -288,12 +311,15 @@ function handleLateProgressStage(installContext) {
  * @param {Object} installContext - Installation context object
  */
 function handleFinalProgressStage(installContext) {
-    const { progress, progressElements } = installContext;
+    const { progress, progressElements, repoUrl, installPath, methodId } = installContext;
     
-    if (progress === 80) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Verifying installation...';
-        logMessage('Verifying installation...', 'info');
+    if (progress === 65) {
+        updateProgressStatus(progressElements, 'Setting up server configuration...');
+    } else if (progress === 70) {
+        updateProgressStatus(progressElements, 'Updating Claude Desktop configuration...');
+        installMcpServersAndUpdateConfig(installContext);
+    } else if (progress === 80) {
+        updateProgressStatus(progressElements, 'Verifying installation...');
     }
 }
 
@@ -304,13 +330,15 @@ function handleFinalProgressStage(installContext) {
 function handleVerificationStage(installContext) {
     const { progress, progressElements } = installContext;
     
-    if (progress === 90) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Finalizing installation...';
-        logMessage('Finalizing installation...', 'info');
+    if (progress === 85) {
+        updateProgressStatus(progressElements, 'Testing server connections...');
+    } else if (progress === 90) {
+        updateProgressStatus(progressElements, 'Finalizing installation...');
         
-        // Verify configuration
-        verifyConfiguration();
+        // Verify configuration if possible
+        if (window.InstallerUIConfigVerification && window.InstallerUIConfigVerification.verifyConfiguration) {
+            window.InstallerUIConfigVerification.verifyConfiguration();
+        }
     }
 }
 
@@ -320,8 +348,11 @@ function handleVerificationStage(installContext) {
  * @param {string} statusText - Status text to display
  */
 function updateProgressStatus(progressElements, statusText) {
-    const { progressStatus } = progressElements;
-    if (progressStatus) progressStatus.textContent = statusText;
+    if (progressElements.progressStatus) {
+        progressElements.progressStatus.textContent = statusText;
+    }
+    
+    // Log status update
     logMessage(statusText, 'info');
 }
 
@@ -330,13 +361,13 @@ function updateProgressStatus(progressElements, statusText) {
  * @param {Object} installContext - Installation context object
  */
 function installMcpServersAndUpdateConfig(installContext) {
-    const { methodId, repoUrl, installPath } = installContext;
+    const { repoUrl, installPath, methodId } = installContext;
     
-    // Install MCP servers
-    installMcpServers(methodId);
-    
-    // Update Claude Desktop configuration file
+    // Update Claude config
     updateClaudeConfigWithModules(repoUrl, installPath, methodId);
+    
+    // Log configuration file path
+    logConfigurationFilePath(installContext);
 }
 
 /**
@@ -346,10 +377,13 @@ function installMcpServersAndUpdateConfig(installContext) {
  * @param {string} methodId - Installation method ID
  */
 function updateClaudeConfigWithModules(repoUrl, installPath, methodId) {
+    // Use the config module if available
     if (window.InstallerUIConfig && window.InstallerUIConfig.updateClaudeConfig) {
         window.InstallerUIConfig.updateClaudeConfig(repoUrl, installPath, methodId);
+    } else if (window.InstallerUI && window.InstallerUI.updateClaudeConfig) {
+        window.InstallerUI.updateClaudeConfig(repoUrl, installPath, methodId);
     } else {
-        updateClaudeConfig(repoUrl, installPath, methodId);
+        logMessage('Configuration update simulated', 'info');
     }
 }
 
@@ -359,8 +393,9 @@ function updateClaudeConfigWithModules(repoUrl, installPath, methodId) {
  */
 function logConfigurationFilePath(installContext) {
     const configPath = getConfigPathForOS();
+    
     if (configPath) {
-        logMessage(`Configuration file updated at: ${configPath}`, 'info');
+        logMessage(`Configuration updated at: ${configPath}`, 'info');
     }
 }
 
@@ -369,11 +404,12 @@ function logConfigurationFilePath(installContext) {
  * @returns {string|null} Configuration file path or null if not Windows
  */
 function getConfigPathForOS() {
-    const isWindows = checkIfWindows();
-    if (isWindows) {
-        return 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
+    if (checkIfWindows()) {
+        return 'C:\\Users\\[username]\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
+    } else {
+        // For non-Windows, we'd return the appropriate path
+        return null;
     }
-    return null;
 }
 
 /**
@@ -383,8 +419,9 @@ function getConfigPathForOS() {
 function checkIfWindows() {
     if (window.InstallerUIUtils && window.InstallerUIUtils.detectOS) {
         return window.InstallerUIUtils.detectOS() === 'windows';
-    } 
-    return detectOS() === 'windows';
+    }
+    
+    return window.navigator.userAgent.indexOf('Windows') !== -1;
 }
 
 /**
@@ -393,9 +430,9 @@ function checkIfWindows() {
  */
 function getProgressElements() {
     return {
-        progressBar: document.getElementById('progressBar'),
-        progressPercent: document.getElementById('progressPercent'),
-        progressStatus: document.getElementById('progressStatus')
+        progressBar: document.getElementById('progress-bar'),
+        progressPercent: document.getElementById('progress-percent'),
+        progressStatus: document.getElementById('progress-status')
     };
 }
 
@@ -404,12 +441,14 @@ function getProgressElements() {
  * @param {string} templateId - The template ID
  */
 function logInstallationStart(templateId) {
-    const timestamp = new Date().toLocaleTimeString();
-    logMessage(`${timestamp} System requirements verified`, 'info');
-    logMessage(`${timestamp} Downloading template: ${templateId}`, 'info');
-    logMessage(`${timestamp} Template downloaded`, 'info');
-    logMessage(`${timestamp} Configuring installation...`, 'info');
-    logMessage(`${timestamp} Configuration complete`, 'info');
+    logMessage('Starting installation...', 'info');
+    logMessage(`Template: ${templateId}`, 'info');
+    
+    // Log additional information if available
+    if (window.InstallerUIUtils && window.InstallerUIUtils.getSystemInfo) {
+        const systemInfo = window.InstallerUIUtils.getSystemInfo();
+        logMessage(`System: ${systemInfo.os} (${systemInfo.arch})`, 'info');
+    }
 }
 
 /**
@@ -421,13 +460,16 @@ function logInstallationStart(templateId) {
  * @returns {string} The installation command
  */
 function getInstallationCommand(methodId, repoUrl, templateId, installPath) {
-    const commands = {
-        npx: `npx @modelcontextprotocol/mcp-installer --repo=${repoUrl} --template=${templateId} --path="${installPath}"`,
-        uv: `uv install @modelcontextprotocol/mcp --repo=${repoUrl} --template=${templateId} --path="${installPath}"`,
-        python: `pip install modelcontextprotocol-mcp --repo=${repoUrl} --template=${templateId} --path="${installPath}"`
-    };
-    
-    return commands[methodId] || commands.npx;
+    switch (methodId) {
+        case 'npx':
+            return `npx @modelcontextprotocol/installer --repo ${repoUrl} --template ${templateId} --path "${installPath}"`;
+        case 'docker':
+            return `docker run --rm -v "${installPath}:/app" modelcontextprotocol/installer --repo ${repoUrl} --template ${templateId}`;
+        case 'python':
+            return `python -m mcp_installer --repo ${repoUrl} --template ${templateId} --path "${installPath}"`;
+        default:
+            return `npx @modelcontextprotocol/installer --repo ${repoUrl} --template ${templateId} --path "${installPath}"`;
+    }
 }
 
 /**
@@ -437,155 +479,20 @@ function getInstallationCommand(methodId, repoUrl, templateId, installPath) {
  * @param {string} status - Current status message
  */
 function updateProgress(elements, progress, status) {
-    const { progressBar, progressPercent, progressStatus } = elements;
-    
-    if (progressBar) progressBar.style.width = `${progress}%`;
-    if (progressPercent) progressPercent.textContent = `${progress}%`;
-    if (progressStatus && status) progressStatus.textContent = status;
-}
-
-/**
- * Simulate installation progress updates
- * @param {Object} progressElements - Progress UI elements
- * @param {string} methodId - Installation method ID
- * @param {string} repoUrl - Repository URL
- * @param {string} installPath - Installation path
- */
-function simulateProgressUpdates(progressElements, methodId, repoUrl, installPath) {
-    let progress = 5; // Starting progress
-    
-    const interval = setInterval(() => {
-        progress += 5;
-        
-        updateProgress(progressElements, progress);
-        
-        // Handle progress milestones
-        handleProgressMilestone({ progress, progressElements, methodId, repoUrl, installPath });
-        
-        // Check if installation is complete
-        if (progress === 100) {
-            completeInstallation(interval, progressElements);
-        }
-    }, 500);
-}
-
-/**
- * Handle progress milestone events
- * @param {Object} installContext - Installation context object containing:
- * @param {number} installContext.progress - Current progress percentage
- * @param {Object} installContext.progressElements - Progress UI elements
- * @param {string} installContext.methodId - Installation method ID
- * @param {string} installContext.repoUrl - Repository URL
- * @param {string} installContext.installPath - Installation path
- */
-function handleProgressMilestone(installContext) {
-    // Create installation context object
-    const { progress, progressElements, methodId, repoUrl, installPath } = installContext;
-    
-    // Handle different progress milestones
-    if (progress <= 20) {
-        handleEarlyProgressStage(installContext);
-    } else if (progress <= 40) {
-        handleMidProgressStage(installContext);
-    } else if (progress <= 60) {
-        handleLateProgressStage(installContext);
-    } else if (progress <= 80) {
-        handleFinalProgressStage(installContext);
-    } else if (progress <= 90) {
-        handleVerificationStage(installContext);
+    // Update progress bar
+    if (elements.progressBar) {
+        elements.progressBar.style.width = `${progress}%`;
+        elements.progressBar.setAttribute('aria-valuenow', progress);
     }
-}
-
-/**
- * Handle early progress stage (0-20%)
- * @param {Object} installContext - Installation context object
- */
-function handleEarlyProgressStage(installContext) {
-    const { progress, progressElements } = installContext;
     
-    if (progress === 20) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Downloading dependencies...';
-        logMessage('Downloading dependencies...', 'info');
+    // Update percentage text
+    if (elements.progressPercent) {
+        elements.progressPercent.textContent = `${progress}%`;
     }
-}
-
-/**
- * Handle mid progress stage (21-40%)
- * @param {Object} installContext - Installation context object
- */
-function handleMidProgressStage(installContext) {
-    const { progress, progressElements } = installContext;
     
-    if (progress === 40) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Installing packages...';
-        logMessage('Installing packages...', 'info');
-    }
-}
-
-/**
- * Handle late progress stage (41-60%)
- * @param {Object} installContext - Installation context object
- */
-function handleLateProgressStage(installContext) {
-    const { progress, progressElements, methodId, repoUrl, installPath } = installContext;
-    
-    if (progress === 60) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Configuring server...';
-        logMessage('Configuring server...', 'info');
-        
-        // Actually install the MCP servers
-        installMcpServers(methodId);
-        
-        // Update Claude Desktop configuration file
-        if (window.InstallerUIConfig && window.InstallerUIConfig.updateClaudeConfig) {
-            window.InstallerUIConfig.updateClaudeConfig(repoUrl, installPath, methodId);
-        } else {
-            updateClaudeConfig(repoUrl, installPath, methodId);
-        }
-        
-        // Log configuration file location
-        if (window.InstallerUIUtils && window.InstallerUIUtils.detectOS) {
-            const os = window.InstallerUIUtils.detectOS();
-            if (os === 'windows') {
-                logMessage('Configuration file updated at: C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json', 'info');
-            }
-        } else if (detectOS() === 'windows') {
-            logMessage('Configuration file updated at: C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json', 'info');
-        }
-    }
-}
-
-/**
- * Handle final progress stage (61-80%)
- * @param {Object} installContext - Installation context object
- */
-function handleFinalProgressStage(installContext) {
-    const { progress, progressElements } = installContext;
-    
-    if (progress === 80) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Verifying installation...';
-        logMessage('Verifying installation...', 'info');
-    }
-}
-
-/**
- * Handle verification stage (81-90%)
- * @param {Object} installContext - Installation context object
- */
-function handleVerificationStage(installContext) {
-    const { progress, progressElements } = installContext;
-    
-    if (progress === 90) {
-        const { progressStatus } = progressElements;
-        if (progressStatus) progressStatus.textContent = 'Finalizing installation...';
-        logMessage('Finalizing installation...', 'info');
-        
-        // Verify configuration
-        verifyConfiguration();
+    // Update status text if provided
+    if (status && elements.progressStatus) {
+        elements.progressStatus.textContent = status;
     }
 }
 
@@ -595,35 +502,41 @@ function handleVerificationStage(installContext) {
  * @param {Object} progressElements - Progress UI elements
  */
 function completeInstallation(interval, progressElements) {
-    const { progressStatus } = progressElements;
-    
-    if (progressStatus) progressStatus.textContent = 'Installation complete!';
-    logMessage('Installation complete!', 'success');
-    logMessage(`Successfully installed MCP server`, 'success');
-    
+    // Stop progress updates
     clearInterval(interval);
     
-    // Show verification container
-    const verificationContainer = document.getElementById('verificationContainer');
-    if (verificationContainer) {
-        setTimeout(() => {
-            verificationContainer.style.display = 'block';
-        }, 1000);
+    // Update UI
+    updateProgress(progressElements, 100, 'Installation complete!');
+    
+    // Show completion message
+    logMessage('✅ Installation completed successfully!', 'success');
+    
+    // Show next steps
+    logMessage('Next steps:', 'info');
+    logMessage('1. Start Claude Desktop', 'info');
+    logMessage('2. Open Settings > MCP Servers', 'info');
+    logMessage('3. Verify installed servers are enabled', 'info');
+    
+    // Show restart button
+    const restartBtn = document.getElementById('restartBtn');
+    if (restartBtn) {
+        restartBtn.style.display = 'block';
     }
     
-    // Update server status
-    updateServerStatus('running');
+    // Verify configuration
+    verifyConfiguration();
 }
 
 /**
  * Verify the configuration was updated correctly
  */
 function verifyConfiguration() {
-    try {
-        const configPath = getClaudeConfigPath();
+    // Get Claude config path
+    const configPath = getClaudeConfigPath();
+    
+    // Process verification
+    if (configPath) {
         processConfigurationVerification(configPath);
-    } catch (error) {
-        logMessage(`Error verifying configuration: ${error.message}`, 'error');
     }
 }
 
@@ -632,7 +545,9 @@ function verifyConfiguration() {
  * @returns {string} Path to Claude configuration file
  */
 function getClaudeConfigPath() {
-    return 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
+    return window.InstallerUIConfigVerification && window.InstallerUIConfigVerification.getClaudeConfigPath ?
+        window.InstallerUIConfigVerification.getClaudeConfigPath() :
+        'C:\\Users\\[username]\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
 }
 
 /**
@@ -640,143 +555,80 @@ function getClaudeConfigPath() {
  * @param {string} configPath - Path to configuration file
  */
 function processConfigurationVerification(configPath) {
-    // In a real implementation, this would read the file and verify it
-    // For our simulation, we'll check localStorage
-    const configData = localStorage.getItem('claude_config');
-    
-    if (configData) {
-        processExistingConfig(configData, configPath);
+    // Use the config verification module if available
+    if (window.InstallerUIConfigVerification && window.InstallerUIConfigVerification.verifyConfiguration) {
+        window.InstallerUIConfigVerification.verifyConfiguration(configPath);
     } else {
-        handleMissingConfig();
+        logMessage(`Configuration verification simulated for: ${configPath}`, 'info');
     }
 }
 
 /**
- * Process existing configuration data
- * @param {string} configData - JSON string of configuration data
- * @param {string} configPath - Path to configuration file
+ * Log a message to the UI
+ * @param {string} message - Message to log
+ * @param {string} type - Message type (info, warning, error, success, command)
  */
-function processExistingConfig(configData, configPath) {
-    try {
-        const config = JSON.parse(configData);
-        verifyAndFixServerConfig(config, configPath);
-    } catch (parseError) {
-        handleConfigParseError(parseError, configPath);
-    }
-}
-
-/**
- * Handle configuration parse error
- * @param {Error} parseError - JSON parse error
- * @param {string} configPath - Path to configuration file
- */
-function handleConfigParseError(parseError, configPath) {
-    logMessage(`Configuration verification failed: ${parseError.message}`, 'error');
-    logMessage('Attempting to fix configuration...', 'info');
-    fixJsonConfig(configPath);
-}
-
-/**
- * Handle missing configuration
- */
-function handleMissingConfig() {
-    logMessage('Configuration file not found, creating new configuration', 'warning');
-    // This would be a call to create a new config file
-}
-
-/**
- * Verify server configuration and fix if needed
- * @param {Object} config - Configuration object
- * @param {string} configPath - Path to configuration file
- */
-function verifyAndFixServerConfig(config, configPath) {
-    // Check if the newly installed servers are in the config
-    const missingServers = checkForMissingServers(config);
-    
-    if (missingServers.length > 0) {
-        logMessage('Configuration verification failed: Missing servers', 'warning');
-        logMessage('Attempting to fix configuration...', 'info');
-        
-        // Ensure mcpServers object exists
-        if (!config.mcpServers) {
-            config.mcpServers = {};
-        }
-        
-        // Add missing servers
-        addMissingServersToConfig(config, missingServers);
-        
-        // Save the updated configuration
-        writeClaudeConfig(configPath, config);
-        logMessage('Configuration fixed successfully', 'success');
+function logMessage(message, type = 'info') {
+    // Use the logger module if available
+    if (window.InstallerUILogger && window.InstallerUILogger.logMessage) {
+        window.InstallerUILogger.logMessage(message, type);
     } else {
-        logMessage('Configuration verification successful', 'success');
-    }
-}
-
-/**
- * Check for missing servers in the configuration
- * @param {Object} config - Configuration object
- * @returns {Array} Array of missing server names
- */
-function checkForMissingServers(config) {
-    const requiredServers = ['github', 'redis', 'time'];
-    const missingServers = [];
-    
-    if (!config.mcpServers) {
-        return requiredServers;
-    }
-    
-    for (const server of requiredServers) {
-        if (!config.mcpServers[server]) {
-            missingServers.push(server);
+        // Fallback to console
+        switch (type) {
+            case 'error':
+                console.error(message);
+                break;
+            case 'warning':
+                console.warn(message);
+                break;
+            case 'success':
+                console.log(`%c${message}`, 'color: green; font-weight: bold');
+                break;
+            case 'command':
+                console.log(`%c${message}`, 'color: blue; font-family: monospace');
+                break;
+            default:
+                console.log(message);
         }
     }
-    
-    return missingServers;
 }
 
 /**
- * Add missing servers to configuration
- * @param {Object} config - Configuration object
- * @param {Array} missingServers - Array of missing server names
+ * Detect operating system
+ * @returns {string} Operating system ('windows', 'macos', 'linux', or 'unknown')
  */
-function addMissingServersToConfig(config, missingServers) {
-    const nodePath = 'C:\\Program Files\\nodejs\\node.exe';
-    const npmModulesPath = 'C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules';
-    
-    for (const server of missingServers) {
-        config.mcpServers[server] = {
-            command: nodePath,
-            args: [`${npmModulesPath}\\@modelcontextprotocol\\server-${server}\\dist\\index.js`],
-            env: { DEBUG: '*' }
-        };
+function detectOS() {
+    // Use the utils module if available
+    if (window.InstallerUIUtils && window.InstallerUIUtils.detectOS) {
+        return window.InstallerUIUtils.detectOS();
     }
+    
+    // Fallback detection
+    const userAgent = window.navigator.userAgent;
+    
+    if (userAgent.indexOf('Windows') !== -1) return 'windows';
+    if (userAgent.indexOf('Mac') !== -1) return 'macos';
+    if (userAgent.indexOf('Linux') !== -1) return 'linux';
+    
+    return 'unknown';
 }
 
 // Export functions for use in other modules
 window.InstallerUIInstallation = {
     startInstallation,
     getInstallationParameters,
-    getTemplateNameFromElement,
-    setDefaultRepoUrlIfEmpty,
+    getRepositoryUrl,
+    getInstallationPath,
+    getSelectedTemplateInfo,
+    getSelectedMethodInfo,
     updateUIForInstallationStart,
     checkPrerequisitesAndContinue,
-    getPrerequisiteWarning,
     simulateInstallation,
-    getProgressElements,
-    logInstallationStart,
-    getInstallationCommand,
-    updateProgress,
-    simulateProgressUpdates,
     handleProgressMilestone,
-    handleEarlyProgressStage,
-    handleMidProgressStage,
-    handleLateProgressStage,
-    handleFinalProgressStage,
-    handleVerificationStage,
+    updateProgress,
+    updateProgressStatus,
     completeInstallation,
     verifyConfiguration,
-    verifyAndFixServerConfig,
-    checkForMissingServers,
-    addMissingServersToConfig
+    logMessage,
+    detectOS
 };

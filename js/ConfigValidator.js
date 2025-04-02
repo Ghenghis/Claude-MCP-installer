@@ -10,9 +10,6 @@ class ConfigValidator {
     constructor() {
         this.customValidators = {};
         
-        // Initialize validator
-        this.initializeValidator();
-
         // Map types to their constraint validation methods
         this._constraintValidators = {
             string: this._validateStringConstraints.bind(this),
@@ -21,6 +18,9 @@ class ConfigValidator {
             array: this._validateArrayConstraints.bind(this),
             object: this._validateObjectConstraints.bind(this)
         };
+        
+        // Initialize validator
+        this.initializeValidator();
     }
     
     /**
@@ -257,30 +257,21 @@ class ConfigValidator {
      * @private
      */
     _validatePropertyType(key, value, propSchema, errors) {
-        if (propSchema.type) {
-            const typeError = this.validateType(value, propSchema.type, key);
-            if (typeError) {
-                errors.push(typeError);
-                return false; // Type validation failed
-            }
+        // Skip type validation if no type is specified
+        if (!propSchema.type) {
+            return true;
         }
-        return true; // Type validation passed or no type specified
-    }
-    
-    /**
-     * Validates the constraints of a single property.
-     * @private
-     */
-    _validatePropertyConstraints(key, value, propSchema, errors) {
-        const validator = this._constraintValidators[propSchema.type];
         
-        if (validator) {
-            const constraintErrors = validator(value, propSchema, key);
-            if (constraintErrors.length > 0) {
-                errors.push(...constraintErrors);
-            }
-        } 
-        // No specific validator needed for boolean, null, etc., or if type is unknown
+        // Perform type validation
+        const typeError = this.validateType(value, propSchema.type, key);
+        
+        // Handle validation result
+        if (typeError) {
+            errors.push(typeError);
+            return false; // Type validation failed
+        }
+        
+        return true; // Type validation passed
     }
     
     /**
@@ -291,55 +282,78 @@ class ConfigValidator {
      * @returns {string|null} Validation error or null if valid
      */
     validateType(value, type, path) {
-        switch (type) {
-            case 'string':
-                if (typeof value !== 'string') {
-                    return `Field "${path}" should be a string`;
-                }
-                break;
-                
-            case 'number':
-                if (typeof value !== 'number') {
-                    return `Field "${path}" should be a number`;
-                }
-                break;
-                
-            case 'integer':
-                if (typeof value !== 'number' || !Number.isInteger(value)) {
-                    return `Field "${path}" should be an integer`;
-                }
-                break;
-                
-            case 'boolean':
-                if (typeof value !== 'boolean') {
-                    return `Field "${path}" should be a boolean`;
-                }
-                break;
-                
-            case 'array':
-                if (!Array.isArray(value)) {
-                    return `Field "${path}" should be an array`;
-                }
-                break;
-                
-            case 'object':
-                if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-                    return `Field "${path}" should be an object`;
-                }
-                break;
-                
-            case 'null':
-                if (value !== null) {
-                    return `Field "${path}" should be null`;
-                }
-                break;
-                
-            default:
-                // No type validation for unknown types
-                break;
-        }
+        // Use type-specific validation methods
+        const typeValidators = {
+            'string': this._validateStringType,
+            'number': this._validateNumberType,
+            'integer': this._validateIntegerType,
+            'boolean': this._validateBooleanType,
+            'array': this._validateArrayType,
+            'object': this._validateObjectType,
+            'null': this._validateNullType
+        };
         
-        return null;
+        // Use the appropriate validator or return null for unknown types
+        const validator = typeValidators[type];
+        return validator ? validator.call(this, value, path) : null;
+    }
+    
+    /**
+     * Validate string type
+     * @private
+     */
+    _validateStringType(value, path) {
+        return typeof value !== 'string' ? `Field "${path}" should be a string` : null;
+    }
+    
+    /**
+     * Validate number type
+     * @private
+     */
+    _validateNumberType(value, path) {
+        return typeof value !== 'number' ? `Field "${path}" should be a number` : null;
+    }
+    
+    /**
+     * Validate integer type
+     * @private
+     */
+    _validateIntegerType(value, path) {
+        return typeof value !== 'number' || !Number.isInteger(value) ? 
+            `Field "${path}" should be an integer` : null;
+    }
+    
+    /**
+     * Validate boolean type
+     * @private
+     */
+    _validateBooleanType(value, path) {
+        return typeof value !== 'boolean' ? `Field "${path}" should be a boolean` : null;
+    }
+    
+    /**
+     * Validate array type
+     * @private
+     */
+    _validateArrayType(value, path) {
+        return !Array.isArray(value) ? `Field "${path}" should be an array` : null;
+    }
+    
+    /**
+     * Validate object type
+     * @private
+     */
+    _validateObjectType(value, path) {
+        return typeof value !== 'object' || value === null || Array.isArray(value) ? 
+            `Field "${path}" should be an object` : null;
+    }
+    
+    /**
+     * Validate null type
+     * @private
+     */
+    _validateNullType(value, path) {
+        return value !== null ? `Field "${path}" should be null` : null;
     }
     
     /**
@@ -357,20 +371,14 @@ class ConfigValidator {
             return errors;
         }
         
-        switch (schema.type) {
-            case 'string':
-                return this._validateStringConstraints(value, schema, path);
-            case 'number':
-            case 'integer':
-                return this._validateNumberConstraints(value, schema, path);
-            case 'array':
-                return this._validateArrayConstraints(value, schema, path);
-            case 'object':
-                return this._validateObjectConstraints(value, schema, path);
-            default:
-                // No constraint validation for other types
-                return errors;
+        // Look up the validator based on schema type
+        const validator = this._constraintValidators[schema.type];
+        if (validator) {
+            return validator(value, schema, path); // Call the appropriate validator
         }
+
+        // No constraint validation for other types or if validator not found
+        return errors;
     }
     
     /**
@@ -554,20 +562,22 @@ class ConfigValidator {
         const itemSchema = schema.items;
         
         for (let i = 0; i < value.length; i++) {
-            this._validateSingleArrayItem(value[i], i, path, itemSchema, errors);
+            this._validateSingleArrayItem({ item: value[i], index: i, basePath: path, itemSchema, errors });
         }
     }
     
     /**
-     * Validates a single item within an array.
-     * @param {*} item - The array item value.
-     * @param {number} index - The index of the item in the array.
-     * @param {string} basePath - The base path to the array.
-     * @param {Object} itemSchema - The schema for the array item.
-     * @param {Array} errors - Array to push errors into.
+     * Validate a single item in an array against its schema
+     * @param {Object} context - Validation context object
+     * @param {*} context.item - The array item to validate
+     * @param {number} context.index - Index of the item in the array
+     * @param {string} context.basePath - Base path for error reporting
+     * @param {Object} context.itemSchema - Schema for the array items
+     * @param {Array} context.errors - Array to push errors into
      * @private
      */
-    _validateSingleArrayItem(item, index, basePath, itemSchema, errors) {
+    _validateSingleArrayItem(context) {
+        const { item, index, basePath, itemSchema, errors } = context;
         const itemPath = `${basePath}[${index}]`;
         const itemErrors = this.validateConstraints(item, itemSchema, itemPath);
         errors.push(...itemErrors);
@@ -630,28 +640,17 @@ class ConfigValidator {
             return; // No known properties defined
         }
         
-        for (const [key, propValue] of Object.entries(value)) {
-            // Skip metadata fields
-            if (key.startsWith('_')) {
-                continue;
-            }
-            
-            const propSchema = schema.properties[key];
+        // Filter keys: exclude metadata keys and include only keys defined in schema.properties
+        const relevantKeys = Object.keys(value).filter(key =>
+            !key.startsWith('_') && schema.properties[key]
+        );
+
+        // Validate properties for the filtered keys
+        for (const key of relevantKeys) {
+            const propValue = value[key];
+            const propSchema = schema.properties[key]; // Schema is guaranteed to exist due to filtering
             const currentPath = path ? `${path}.${key}` : key;
-            
-            if (propSchema) {
-                // Validate type and constraints for this known property
-                const typeError = this.validateType(propValue, propSchema.type, currentPath);
-                if (typeError) {
-                    errors.push(typeError);
-                } else {
-                    // Only validate constraints if type is correct
-                    const constraintErrors = this.validateConstraints(propValue, propSchema, currentPath);
-                    errors.push(...constraintErrors);
-                }
-            }
-            // Note: Handling of additional properties (keys not in schema.properties)
-            // is managed by _checkAdditionalProperties, called from validateConfig.
+            this._validatePropertyAgainstSchema(propValue, propSchema, currentPath, errors);
         }
     }
     
@@ -665,35 +664,102 @@ class ConfigValidator {
         }
 
         for (const [key, propValue] of Object.entries(value)) {
-             // Skip metadata fields
+            // Skip metadata fields
             if (key.startsWith('_')) {
                 continue;
             }
 
-            for (const pattern in schema.patternProperties) {
-                try {
-                    const regex = new RegExp(pattern);
-                    if (regex.test(key)) {
-                        const patternSchema = schema.patternProperties[pattern];
-                        const currentPath = path ? `${path}.${key}` : key;
-
-                        const typeError = this.validateType(propValue, patternSchema.type, currentPath);
-                        if (typeError) {
-                            errors.push(typeError);
-                        } else {
-                            // Only validate constraints if type is correct and pattern matches
-                            const constraintErrors = this.validateConstraints(propValue, patternSchema, currentPath);
-                            errors.push(...constraintErrors);
-                        }
-                    }
-                } catch (e) {
-                   logger.error(`Invalid regex pattern ${pattern} in schema for ${path}: ${e.message}`);
-                   errors.push(`Internal validation error: Invalid regex pattern for ${path}`);
-                }
-            }
+            // Create context object for pattern validation
+            const context = {
+                key,
+                propValue,
+                patternProperties: schema.patternProperties,
+                path,
+                errors
+            };
+            
+            // Validate property against patterns
+            this._validatePropertyAgainstPatterns(context);
         }
     }
-
+    
+    /**
+     * Validates a property against pattern properties
+     * @param {Object} context - Validation context object
+     * @param {string} context.key - The property key
+     * @param {*} context.propValue - The property value
+     * @param {Object} context.patternProperties - The pattern properties object
+     * @param {string} context.path - The base path
+     * @param {Array} context.errors - Array to collect errors
+     * @private
+     */
+    _validatePropertyAgainstPatterns(context) {
+        const { key, propValue, patternProperties, path, errors } = context;
+        
+        for (const pattern in patternProperties) {
+            // Create context object for pattern matching
+            const matchContext = {
+                key,
+                pattern,
+                path,
+                errors
+            };
+            
+            if (!this._isKeyMatchingPattern(matchContext)) {
+                continue;
+            }
+            
+            const patternSchema = patternProperties[pattern];
+            const currentPath = path ? `${path}.${key}` : key;
+            
+            this._validatePropertyAgainstSchema(propValue, patternSchema, currentPath, errors);
+        }
+    }
+    
+    /**
+     * Validates a property against a schema
+     * @param {*} propValue - The property value
+     * @param {Object} propSchema - The property schema
+     * @param {string} currentPath - The current property path
+     * @param {Array} errors - Array to collect errors
+     * @private
+     */
+    _validatePropertyAgainstSchema(propValue, propSchema, currentPath, errors) {
+        // Validate type
+        const typeError = this.validateType(propValue, propSchema.type, currentPath);
+        if (typeError) {
+            errors.push(typeError);
+            return; // Skip constraint validation if type is incorrect
+        }
+        
+        // Validate constraints
+        const constraintErrors = this.validateConstraints(propValue, propSchema, currentPath);
+        errors.push(...constraintErrors);
+    }
+    
+    /**
+     * Checks if a key matches a pattern
+     * @param {Object} context - Pattern matching context
+     * @param {string} context.key - The property key
+     * @param {string} context.pattern - The regex pattern
+     * @param {string} context.path - The base path (for error reporting)
+     * @param {Array} context.errors - Array to collect errors
+     * @returns {boolean} True if the key matches the pattern
+     * @private
+     */
+    _isKeyMatchingPattern(context) {
+        const { key, pattern, path, errors } = context;
+        
+        try {
+            const regex = new RegExp(pattern);
+            return regex.test(key);
+        } catch (e) {
+            logger.error(`Invalid regex pattern ${pattern} in schema for ${path}: ${e.message}`);
+            errors.push(`Internal validation error: Invalid regex pattern for ${path}`);
+            return false;
+        }
+    }
+    
     /**
      * Apply custom validators
      * @param {Object} config - Configuration to validate

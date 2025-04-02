@@ -17,6 +17,7 @@ class PerformanceVisualizer {
         
         this.charts = {};
         this.reportData = {};
+        this.maxDataPoints = 20; // Define maxDataPoints
         
         // Initialize event listeners
         this.initializeEventListeners();
@@ -252,11 +253,30 @@ class PerformanceVisualizer {
      * @param {number} [maxPoints=20] - The maximum number of data points to keep.
      * @private
      */
-    _shiftChartDataIfNeeded(chart, maxPoints = 20) {
-        if (chart.data.labels.length > maxPoints) {
-            chart.data.labels.shift();
-            chart.data.datasets.forEach(dataset => {
-                dataset.data.shift();
+    _limitDataPoints(chart, maxPoints = this.maxDataPoints) {
+        // Use optional chaining for safer access
+        const labels = chart?.data?.labels;
+        const datasets = chart?.data?.datasets;
+
+        if (!labels || !datasets) {
+            console.error('Chart data structure incomplete for limiting points.');
+            return;
+        }
+
+        const currentLength = labels.length;
+        if (currentLength > maxPoints) {
+            const pointsToRemove = currentLength - maxPoints;
+
+            // Remove excess labels using splice
+            labels.splice(0, pointsToRemove);
+
+            // Remove excess data points from each dataset using splice
+            datasets.forEach(dataset => {
+                if (dataset.data && dataset.data.length >= pointsToRemove) {
+                    dataset.data.splice(0, pointsToRemove);
+                } else {
+                    console.error('Dataset data inconsistent while limiting points:', dataset);
+                }
             });
         }
     }
@@ -284,20 +304,34 @@ class PerformanceVisualizer {
         // Add label
         chart.data.labels.push(label);
         
-        // Add data (handle both single values and arrays)
-        if (Array.isArray(data)) {
-            for (let i = 0; i < data.length; i++) {
-                chart.data.datasets[i].data.push(data[i]);
-            }
-        } else {
-            chart.data.datasets[0].data.push(data);
-        }
+        // Ensure data is an array
+        const dataArray = Array.isArray(data) ? data : [data];
+
+        // Add data
+        this._addDataToDatasets(chart.data.datasets, dataArray);
         
         // Maintain chart size limit
-        this._shiftChartDataIfNeeded(chart);
+        this._limitDataPoints(chart);
         
         // Update chart
         chart.update();
+    }
+    
+    /**
+     * Adds data to the appropriate datasets in a chart
+     * @param {Array<Object>} datasets - The datasets array from chart.data
+     * @param {Array<number>} data - The data values to add
+     * @private
+     */
+    _addDataToDatasets(datasets, data) {
+        datasets.forEach((dataset, index) => {
+            if (data[index] !== undefined) {
+                dataset.data.push(data[index]);
+            } else {
+                // Handle cases where data array is shorter than datasets
+                dataset.data.push(null); 
+            }
+        });
     }
     
     /**
@@ -311,26 +345,51 @@ class PerformanceVisualizer {
             const timeLabel = this._createTimeLabel();
             
             // Update individual resource charts
-            for (const resourceType of ['cpu', 'memory', 'disk', 'network']) {
-                const chartId = `${serverId}-${resourceType}`;
-                const chart = this.charts[chartId];
-                
-                if (chart) {
-                    this._addDataPointAndUpdate(chart, timeLabel, resources[resourceType]);
-                }
-            }
+            this._updateResourceCharts(serverId, resources, timeLabel);
             
             // Update combined resource chart
-            const combinedChartId = `${serverId}-combined`;
-            const combinedChart = this.charts[combinedChartId];
-            
-            if (combinedChart) {
-                const resourceValues = ['cpu', 'memory', 'disk', 'network'].map(type => resources[type]);
-                this._addDataPointAndUpdate(combinedChart, timeLabel, resourceValues);
-            }
+            this._updateCombinedChart(serverId, resources, timeLabel);
             
         } catch (error) {
             console.error(`Error updating charts for server ${serverId}:`, error);
+        }
+    }
+    
+    /**
+     * Updates individual resource charts for a server
+     * @param {string} serverId - Server ID
+     * @param {Object} resources - Server resources
+     * @param {string} timeLabel - Time label for the data point
+     * @private
+     */
+    _updateResourceCharts(serverId, resources, timeLabel) {
+        const resourceTypes = ['cpu', 'memory', 'disk', 'network'];
+        
+        for (const resourceType of resourceTypes) {
+            const chartId = `${serverId}-${resourceType}`;
+            const chart = this.charts[chartId];
+            
+            if (chart) {
+                this._addDataPointAndUpdate(chart, timeLabel, resources[resourceType]);
+            }
+        }
+    }
+    
+    /**
+     * Updates the combined resource chart for a server
+     * @param {string} serverId - Server ID
+     * @param {Object} resources - Server resources
+     * @param {string} timeLabel - Time label for the data point
+     * @private
+     */
+    _updateCombinedChart(serverId, resources, timeLabel) {
+        const combinedChartId = `${serverId}-combined`;
+        const combinedChart = this.charts[combinedChartId];
+        
+        if (combinedChart) {
+            const resourceTypes = ['cpu', 'memory', 'disk', 'network'];
+            const resourceValues = resourceTypes.map(type => resources[type]);
+            this._addDataPointAndUpdate(combinedChart, timeLabel, resourceValues);
         }
     }
     

@@ -1,16 +1,16 @@
 /**
  * Installer UI Events - Event listeners and UI interaction handlers
+ * This file is maintained for backward compatibility
+ * New code should use the InstallerUIEvents module directly
  */
+
+import installerUIEvents from './InstallerUIEvents.js';
 
 /**
  * Add event listeners to UI elements
  */
 function addEventListeners() {
-    // Add listeners by category
-    addUIControlListeners();
-    addTemplateListeners();
-    addNavigationListeners();
-    addActionListeners();
+    installerUIEvents.setupEventListeners();
 }
 
 /**
@@ -150,7 +150,7 @@ function addGenerateSecretButtonListener() {
 function addInstallButtonListener() {
     const installBtn = document.getElementById('installBtn');
     if (installBtn) {
-        installBtn.addEventListener('click', InstallerUIInstallation.startInstallation);
+        installBtn.addEventListener('click', startInstallation);
     }
 }
 
@@ -199,8 +199,8 @@ function getInstallationParameters() {
     return {
         repoUrl: getRepositoryUrl(),
         installPath: getInstallationPath(),
-        ...getTemplateInfo(),
-        ...getMethodInfo()
+        template: getTemplateInfo(),
+        method: getMethodInfo()
     };
 }
 
@@ -209,7 +209,7 @@ function getInstallationParameters() {
  * @returns {string} Repository URL
  */
 function getRepositoryUrl() {
-    return document.getElementById('repoUrl')?.value || 'https://github.com/modelcontextprotocol/servers';
+    return document.getElementById('repoUrl')?.value || '';
 }
 
 /**
@@ -217,8 +217,8 @@ function getRepositoryUrl() {
  * @returns {string} Installation path
  */
 function getInstallationPath() {
-    return document.getElementById('installPath')?.value ||
-           (InstallerUtils.detectOS() === 'windows' ? 'C:\\Program Files\\Claude Desktop MCP' : '/opt/claude-desktop-mcp');
+    const path = document.getElementById('installPath')?.value || '';
+    return path.trim();
 }
 
 /**
@@ -227,12 +227,15 @@ function getInstallationPath() {
  */
 function getTemplateInfo() {
     const selectedTemplate = document.querySelector('.template-card.selected');
-    const templateName = InstallerUITemplates.getElementText(selectedTemplate, 'h3') || 
-                         InstallerUITemplates.getElementText(selectedTemplate, '.template-title') || 
-                         'Unknown template';
-    const templateId = selectedTemplate?.dataset.template || 'basic-api';
     
-    return { templateName, templateId };
+    if (selectedTemplate) {
+        return {
+            id: selectedTemplate.dataset.templateId,
+            name: selectedTemplate.querySelector('.template-name')?.textContent || ''
+        };
+    }
+    
+    return null;
 }
 
 /**
@@ -241,19 +244,24 @@ function getTemplateInfo() {
  */
 function getMethodInfo() {
     const selectedMethod = document.querySelector('.method-option.selected');
-    const methodName = InstallerUITemplates.getElementText(selectedMethod, 'h3') || 'Unknown method';
-    const methodId = selectedMethod?.dataset.method || 'npx';
     
-    return { methodName, methodId };
+    if (selectedMethod) {
+        return {
+            id: selectedMethod.dataset.methodId,
+            name: selectedMethod.querySelector('.method-name')?.textContent || ''
+        };
+    }
+    
+    return null;
 }
 
 /**
  * Set default repository URL if empty
  */
 function setDefaultRepoUrlIfEmpty() {
-    const repoUrlElement = document.getElementById('repoUrl');
-    if (repoUrlElement && !repoUrlElement.value) {
-        repoUrlElement.value = 'https://github.com/modelcontextprotocol/servers';
+    const repoUrlInput = document.getElementById('repoUrl');
+    if (repoUrlInput && !repoUrlInput.value) {
+        repoUrlInput.value = 'https://github.com/modelcontextprotocol/servers';
     }
 }
 
@@ -261,16 +269,16 @@ function setDefaultRepoUrlIfEmpty() {
  * Update UI elements when installation starts
  */
 function updateUIForInstallationStart() {
-    // Show progress container
-    const progressContainer = document.getElementById('progressContainer');
-    if (progressContainer) {
-        progressContainer.style.display = 'block';
+    // Hide installation form
+    const installForm = document.getElementById('installForm');
+    if (installForm) {
+        installForm.style.display = 'none';
     }
     
-    // Hide install button
-    const installBtn = document.getElementById('installBtn');
-    if (installBtn) {
-        installBtn.style.display = 'none';
+    // Show installation progress
+    const installProgress = document.getElementById('installProgress');
+    if (installProgress) {
+        installProgress.style.display = 'block';
     }
 }
 
@@ -279,25 +287,24 @@ function updateUIForInstallationStart() {
  * @param {Object} params - Installation parameters
  */
 function checkPrerequisitesAndContinue(params) {
-    // Extract only the needed parameters
-    const { methodName, methodId } = params;
+    // Get method ID
+    const methodId = params.method?.id || '';
     
-    // Get prerequisite warning based on method
-    const prerequisiteWarning = getPrerequisiteWarning(methodId);
+    // Check for prerequisites warning
+    const warning = getPrerequisiteWarning(methodId);
     
-    if (prerequisiteWarning) {
-        InstallerLogger.logMessage(`⚠️ PREREQUISITE CHECK for '${methodName}' method:`, 'warning');
-        InstallerLogger.logMessage(`⚠️ ${prerequisiteWarning}`, 'warning');
-        InstallerLogger.logMessage(`⚠️ Refer to WINDOWS_SETUP.md for installation help.`, 'warning');
-        
-        // Add a delay before proceeding to ensure the warning is noticed
-        setTimeout(() => {
-            // Start installation after delay
-            InstallerUIProgress.simulateInstallation(params);
-        }, 2000); // 2 second delay
+    if (warning) {
+        // Show warning and ask for confirmation
+        if (confirm(`${warning}\n\nDo you want to continue anyway?`)) {
+            // Continue with installation
+            InstallerUIInstallation.performInstallation(params);
+        } else {
+            // Cancel installation
+            updateUIForInstallationCancel();
+        }
     } else {
-        // No prerequisites needed, start immediately
-        InstallerUIProgress.simulateInstallation(params);
+        // No warning, continue with installation
+        InstallerUIInstallation.performInstallation(params);
     }
 }
 
@@ -307,13 +314,34 @@ function checkPrerequisitesAndContinue(params) {
  * @returns {string|null} Warning message or null if no warning
  */
 function getPrerequisiteWarning(methodId) {
-    const warnings = {
-        npx: 'Ensure Node.js (including npm/npx) is installed and added to your system PATH.',
-        python: 'Ensure Python (including pip) is installed and added to your system PATH.',
-        uv: 'Ensure uv package installer is installed and configured properly.'
-    };
+    // Check method-specific prerequisites
+    switch (methodId) {
+        case 'git':
+            return 'Git must be installed and available in your PATH.';
+        case 'docker':
+            return 'Docker must be installed and running.';
+        case 'npm':
+            return 'Node.js and npm must be installed.';
+        default:
+            return null;
+    }
+}
+
+/**
+ * Update UI elements when installation is cancelled
+ */
+function updateUIForInstallationCancel() {
+    // Show installation form
+    const installForm = document.getElementById('installForm');
+    if (installForm) {
+        installForm.style.display = 'block';
+    }
     
-    return warnings[methodId] || null;
+    // Hide installation progress
+    const installProgress = document.getElementById('installProgress');
+    if (installProgress) {
+        installProgress.style.display = 'none';
+    }
 }
 
 // Export functions for use in other modules
@@ -330,8 +358,13 @@ window.InstallerUIEvents = {
     addConfigurationButtonListeners,
     startInstallation,
     getInstallationParameters,
+    getRepositoryUrl,
+    getInstallationPath,
+    getTemplateInfo,
+    getMethodInfo,
     setDefaultRepoUrlIfEmpty,
     updateUIForInstallationStart,
     checkPrerequisitesAndContinue,
-    getPrerequisiteWarning
+    getPrerequisiteWarning,
+    updateUIForInstallationCancel
 };

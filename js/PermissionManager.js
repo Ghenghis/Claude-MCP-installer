@@ -57,55 +57,62 @@ class PermissionManager {
     }
     
     /**
+     * Helper method to load JSON data from localStorage
+     * @param {string} key - The localStorage key
+     * @param {*} defaultValue - The default value to return on error or if not found
+     * @returns {*} The loaded data or the default value
+     * @private
+     */
+    _loadFromLocalStorage(key, defaultValue = {}) {
+        try {
+            const storedData = localStorage.getItem(key);
+            return storedData ? JSON.parse(storedData) : defaultValue;
+        } catch (error) {
+            console.error(`Error loading data from localStorage key "${key}":`, error);
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Helper method to save JSON data to localStorage
+     * @param {string} key - The localStorage key
+     * @param {*} data - The data to save
+     * @private
+     */
+    _saveToLocalStorage(key, data) {
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+        } catch (error) {
+            console.error(`Error saving data to localStorage key "${key}":`, error);
+        }
+    }
+
+    /**
      * Load user roles from localStorage
      */
     loadUserRoles() {
-        try {
-            const storedRoles = localStorage.getItem('mcp_user_roles');
-            
-            if (storedRoles) {
-                this.userRoles = JSON.parse(storedRoles);
-            }
-        } catch (error) {
-            console.error('Error loading user roles:', error);
-        }
+        this.userRoles = this._loadFromLocalStorage('mcp_user_roles', {});
     }
-    
+     
     /**
      * Save user roles to localStorage
      */
     saveUserRoles() {
-        try {
-            localStorage.setItem('mcp_user_roles', JSON.stringify(this.userRoles));
-        } catch (error) {
-            console.error('Error saving user roles:', error);
-        }
+        this._saveToLocalStorage('mcp_user_roles', this.userRoles);
     }
-    
+     
     /**
      * Load server permissions from localStorage
      */
     loadServerPermissions() {
-        try {
-            const storedPermissions = localStorage.getItem('mcp_server_permissions');
-            
-            if (storedPermissions) {
-                this.serverPermissions = JSON.parse(storedPermissions);
-            }
-        } catch (error) {
-            console.error('Error loading server permissions:', error);
-        }
+        this.serverPermissions = this._loadFromLocalStorage('mcp_server_permissions', {});
     }
-    
+     
     /**
      * Save server permissions to localStorage
      */
     saveServerPermissions() {
-        try {
-            localStorage.setItem('mcp_server_permissions', JSON.stringify(this.serverPermissions));
-        } catch (error) {
-            console.error('Error saving server permissions:', error);
-        }
+        this._saveToLocalStorage('mcp_server_permissions', this.serverPermissions);
     }
     
     /**
@@ -148,406 +155,213 @@ class PermissionManager {
      */
     hasPermission(userId, permission, serverId = null) {
         try {
-            // Get user role
             const role = this.getUserRole(userId);
             const rolePermissions = this.roles[role]?.permissions || [];
-            
-            // Check if role has wildcard permission
+
+            // Check for wildcard permission
             if (rolePermissions.includes('*')) {
                 return true;
             }
-            
-            // Check if role has the specific permission
-            if (rolePermissions.includes(permission)) {
-                // If no server ID is specified, or no server-specific permissions exist, role permission is sufficient
-                if (!serverId || !this.serverPermissions[serverId]) {
-                    return true;
-                }
-                
-                // Check server-specific permissions
-                const serverPerms = this.serverPermissions[serverId];
-                
-                // If user is explicitly denied this permission for this server
-                if (serverPerms.userDenied && 
-                    serverPerms.userDenied[userId] && 
-                    serverPerms.userDenied[userId].includes(permission)) {
-                    return false;
-                }
-                
-                // If user is explicitly granted this permission for this server
-                if (serverPerms.userGranted && 
-                    serverPerms.userGranted[userId] && 
-                    serverPerms.userGranted[userId].includes(permission)) {
-                    return true;
-                }
-                
-                // If role is explicitly denied this permission for this server
-                if (serverPerms.roleDenied && 
-                    serverPerms.roleDenied[role] && 
-                    serverPerms.roleDenied[role].includes(permission)) {
-                    return false;
-                }
-                
-                // If role is explicitly granted this permission for this server
-                if (serverPerms.roleGranted && 
-                    serverPerms.roleGranted[role] && 
-                    serverPerms.roleGranted[role].includes(permission)) {
-                    return true;
-                }
-                
-                // Default to role permission
-                return true;
+
+            // Check if role has the general permission
+            const hasRolePermission = rolePermissions.includes(permission);
+
+            // If no server ID is provided or no server-specific rules exist, rely on role permission
+            if (!serverId || !this.serverPermissions[serverId]) {
+                return hasRolePermission;
             }
-            
-            // Check if user has server-specific permission
-            if (serverId && this.serverPermissions[serverId]) {
-                const serverPerms = this.serverPermissions[serverId];
-                
-                if (serverPerms.userGranted && 
-                    serverPerms.userGranted[userId] && 
-                    serverPerms.userGranted[userId].includes(permission)) {
-                    return true;
-                }
+
+            // Check server-specific overrides if the role has the general permission
+            if (hasRolePermission) {
+                 const serverOverride = this._checkServerSpecificPermission(userId, role, permission, serverId);
+                 // If there's a specific override (true for grant, false for deny), use it.
+                 // Otherwise (null), rely on the general role permission.
+                 return serverOverride !== null ? serverOverride : true;
+            } 
+            // If the role doesn't have the general permission, check if there is a specific grant for this server
+            else {
+                const serverGrant = this._checkServerSpecificPermission(userId, role, permission, serverId);
+                // Only return true if specifically granted on the server level
+                return serverGrant === true; 
             }
-            
-            return false;
+
         } catch (error) {
-            console.error('Error checking permission:', error);
+            console.error(`Error checking permission for user ${userId}, permission ${permission}:`, error);
+            return false; // Default to deny on error
+        }
+    }
+
+    /**
+     * Helper method to check server-specific permission overrides.
+     * Returns true if granted, false if denied, null if no specific override.
+     * @param {string} userId
+     * @param {string} role
+     * @param {string} permission
+     * @param {string} serverId
+     * @returns {boolean | null}
+     * @private
+     */
+    _checkServerSpecificPermission(userId, role, permission, serverId) {
+        const serverPerms = this.serverPermissions[serverId];
+        if (!serverPerms) return null; // No specific rules for this server
+
+        // Check user-specific denial first (highest priority)
+        if (serverPerms.userDenied?.[userId]?.includes(permission)) {
+            return false;
+        }
+
+        // Check user-specific grant
+        if (serverPerms.userGranted?.[userId]?.includes(permission)) {
+            return true;
+        }
+
+        // Check role-specific denial
+        if (serverPerms.roleDenied?.[role]?.includes(permission)) {
+            return false;
+        }
+
+        // Check role-specific grant
+        if (serverPerms.roleGranted?.[role]?.includes(permission)) {
+            return true;
+        }
+        
+        return null; // No specific override found for this user/role/permission on this server
+    }
+
+    /**
+     * Private helper to add a permission to a specific list for a server.
+     * Handles initialization of nested structures.
+     * @param {string} serverId - The ID of the server.
+     * @param {'userGranted'|'userDenied'|'roleGranted'|'roleDenied'} listType - The type of list to modify.
+     * @param {string} identifier - The userId or role name.
+     * @param {string} permission - The permission string to add.
+     * @returns {boolean} - True if the permission was added or already existed, false on error.
+     * @private
+     */
+    _addPermissionToServerList(serverId, listType, identifier, permission) {
+        try {
+            // Use short-circuit evaluation to ensure nested objects/arrays exist
+            const serverPerms = this.serverPermissions[serverId] = this.serverPermissions[serverId] || {};
+            const list = serverPerms[listType] = serverPerms[listType] || {};
+            const permissionsList = list[identifier] = list[identifier] || [];
+
+            // Add permission if it doesn't already exist
+            if (!permissionsList.includes(permission)) {
+                permissionsList.push(permission);
+            }
+
+            this.saveServerPermissions();
+            return true;
+        } catch (error) {
+            console.error(`Error adding permission (${permission}) to ${listType} for ${identifier} on server ${serverId}:`, error);
             return false;
         }
     }
-    
+
     /**
      * Grant permission to a user for a server
      * @param {string} userId - User ID
-     * @param {string} permission - Permission name
      * @param {string} serverId - Server ID
+     * @param {string} permission - Permission name
      * @returns {boolean} Success status
      */
-    grantPermission(userId, permission, serverId) {
-        try {
-            if (!serverId) {
-                throw new Error('Server ID is required');
-            }
-            
-            // Initialize server permissions if needed
-            if (!this.serverPermissions[serverId]) {
-                this.serverPermissions[serverId] = {
-                    userGranted: {},
-                    userDenied: {},
-                    roleGranted: {},
-                    roleDenied: {}
-                };
-            }
-            
-            // Initialize user granted permissions if needed
-            if (!this.serverPermissions[serverId].userGranted[userId]) {
-                this.serverPermissions[serverId].userGranted[userId] = [];
-            }
-            
-            // Add permission if not already granted
-            if (!this.serverPermissions[serverId].userGranted[userId].includes(permission)) {
-                this.serverPermissions[serverId].userGranted[userId].push(permission);
-            }
-            
-            // Remove from denied permissions if present
-            if (this.serverPermissions[serverId].userDenied[userId]) {
-                const index = this.serverPermissions[serverId].userDenied[userId].indexOf(permission);
-                if (index !== -1) {
-                    this.serverPermissions[serverId].userDenied[userId].splice(index, 1);
-                }
-            }
-            
-            // Save server permissions
-            this.saveServerPermissions();
-            
-            return true;
-        } catch (error) {
-            console.error('Error granting permission:', error);
-            return false;
-        }
+    grantUserPermissionForServer(userId, serverId, permission) {
+        return this._addPermissionToServerList(serverId, 'userGranted', userId, permission);
     }
-    
+
     /**
-     * Revoke permission from a user for a server
+     * Revoke permission from a user for a server (adds to denied list)
      * @param {string} userId - User ID
+     * @param {string} serverId - Server ID
      * @param {string} permission - Permission name
+     * @returns {boolean} Success status
+     */
+    revokeUserPermissionForServer(userId, serverId, permission) {
+        // Note: This implementation adds to 'denied'. A different implementation
+        // might remove from 'granted'. This follows the original structure.
+        return this._addPermissionToServerList(serverId, 'userDenied', userId, permission);
+    }
+
+    /**
+     * Clear specific user permissions for a server
+     * @param {string} userId - User ID
      * @param {string} serverId - Server ID
      * @returns {boolean} Success status
      */
-    revokePermission(userId, permission, serverId) {
+    clearUserPermissionsForServer(userId, serverId) {
         try {
-            if (!serverId) {
-                throw new Error('Server ID is required');
-            }
-            
-            // Initialize server permissions if needed
-            if (!this.serverPermissions[serverId]) {
-                this.serverPermissions[serverId] = {
-                    userGranted: {},
-                    userDenied: {},
-                    roleGranted: {},
-                    roleDenied: {}
-                };
-            }
-            
-            // Initialize user denied permissions if needed
-            if (!this.serverPermissions[serverId].userDenied[userId]) {
-                this.serverPermissions[serverId].userDenied[userId] = [];
-            }
-            
-            // Add permission to denied list if not already denied
-            if (!this.serverPermissions[serverId].userDenied[userId].includes(permission)) {
-                this.serverPermissions[serverId].userDenied[userId].push(permission);
-            }
-            
-            // Remove from granted permissions if present
-            if (this.serverPermissions[serverId].userGranted[userId]) {
-                const index = this.serverPermissions[serverId].userGranted[userId].indexOf(permission);
-                if (index !== -1) {
-                    this.serverPermissions[serverId].userGranted[userId].splice(index, 1);
+            if (this.serverPermissions[serverId]) {
+                if (this.serverPermissions[serverId].userGranted) {
+                    delete this.serverPermissions[serverId].userGranted[userId];
                 }
+                if (this.serverPermissions[serverId].userDenied) {
+                    delete this.serverPermissions[serverId].userDenied[userId];
+                }
+                this.saveServerPermissions();
             }
-            
-            // Save server permissions
-            this.saveServerPermissions();
-            
             return true;
         } catch (error) {
-            console.error('Error revoking permission:', error);
+            console.error('Error clearing user permissions for server:', error);
             return false;
         }
     }
-    
+
     /**
      * Grant permission to a role for a server
      * @param {string} role - Role name
-     * @param {string} permission - Permission name
      * @param {string} serverId - Server ID
+     * @param {string} permission - Permission name
      * @returns {boolean} Success status
      */
-    grantRolePermission(role, permission, serverId) {
-        try {
-            if (!this.roles[role]) {
-                throw new Error(`Invalid role: ${role}`);
-            }
-            
-            if (!serverId) {
-                throw new Error('Server ID is required');
-            }
-            
-            // Initialize server permissions if needed
-            if (!this.serverPermissions[serverId]) {
-                this.serverPermissions[serverId] = {
-                    userGranted: {},
-                    userDenied: {},
-                    roleGranted: {},
-                    roleDenied: {}
-                };
-            }
-            
-            // Initialize role granted permissions if needed
-            if (!this.serverPermissions[serverId].roleGranted[role]) {
-                this.serverPermissions[serverId].roleGranted[role] = [];
-            }
-            
-            // Add permission if not already granted
-            if (!this.serverPermissions[serverId].roleGranted[role].includes(permission)) {
-                this.serverPermissions[serverId].roleGranted[role].push(permission);
-            }
-            
-            // Remove from denied permissions if present
-            if (this.serverPermissions[serverId].roleDenied[role]) {
-                const index = this.serverPermissions[serverId].roleDenied[role].indexOf(permission);
-                if (index !== -1) {
-                    this.serverPermissions[serverId].roleDenied[role].splice(index, 1);
-                }
-            }
-            
-            // Save server permissions
-            this.saveServerPermissions();
-            
-            return true;
-        } catch (error) {
-            console.error('Error granting role permission:', error);
-            return false;
-        }
+    grantRolePermissionForServer(role, serverId, permission) {
+        return this._addPermissionToServerList(serverId, 'roleGranted', role, permission);
     }
-    
+
     /**
-     * Revoke permission from a role for a server
+     * Revoke permission from a role for a server (adds to denied list)
      * @param {string} role - Role name
+     * @param {string} serverId - Server ID
      * @param {string} permission - Permission name
+     * @returns {boolean} Success status
+     */
+    revokeRolePermissionForServer(role, serverId, permission) {
+        // Note: This implementation adds to 'denied'. A different implementation
+        // might remove from 'granted'. This follows the original structure.
+        return this._addPermissionToServerList(serverId, 'roleDenied', role, permission);
+    }
+
+    /**
+     * Clear specific role permissions for a server
+     * @param {string} role - Role name
      * @param {string} serverId - Server ID
      * @returns {boolean} Success status
      */
-    revokeRolePermission(role, permission, serverId) {
+    clearRolePermissionsForServer(role, serverId) {
         try {
-            if (!this.roles[role]) {
-                throw new Error(`Invalid role: ${role}`);
-            }
-            
-            if (!serverId) {
-                throw new Error('Server ID is required');
-            }
-            
-            // Initialize server permissions if needed
-            if (!this.serverPermissions[serverId]) {
-                this.serverPermissions[serverId] = {
-                    userGranted: {},
-                    userDenied: {},
-                    roleGranted: {},
-                    roleDenied: {}
-                };
-            }
-            
-            // Initialize role denied permissions if needed
-            if (!this.serverPermissions[serverId].roleDenied[role]) {
-                this.serverPermissions[serverId].roleDenied[role] = [];
-            }
-            
-            // Add permission to denied list if not already denied
-            if (!this.serverPermissions[serverId].roleDenied[role].includes(permission)) {
-                this.serverPermissions[serverId].roleDenied[role].push(permission);
-            }
-            
-            // Remove from granted permissions if present
-            if (this.serverPermissions[serverId].roleGranted[role]) {
-                const index = this.serverPermissions[serverId].roleGranted[role].indexOf(permission);
-                if (index !== -1) {
-                    this.serverPermissions[serverId].roleGranted[role].splice(index, 1);
+            if (this.serverPermissions[serverId]) {
+                if (this.serverPermissions[serverId].roleGranted) {
+                    delete this.serverPermissions[serverId].roleGranted[role];
                 }
-            }
-            
-            // Save server permissions
-            this.saveServerPermissions();
-            
-            return true;
-        } catch (error) {
-            console.error('Error revoking role permission:', error);
-            return false;
-        }
-    }
-    
-    /**
-     * Create a new role
-     * @param {string} roleName - Role name
-     * @param {Object} roleConfig - Role configuration
-     * @returns {boolean} Success status
-     */
-    createRole(roleName, roleConfig) {
-        try {
-            if (this.roles[roleName]) {
-                throw new Error(`Role already exists: ${roleName}`);
-            }
-            
-            this.roles[roleName] = {
-                name: roleConfig.name || roleName,
-                description: roleConfig.description || '',
-                permissions: roleConfig.permissions || []
-            };
-            
-            // Save roles to localStorage
-            this.saveRoles();
-            
-            return true;
-        } catch (error) {
-            console.error('Error creating role:', error);
-            return false;
-        }
-    }
-    
-    /**
-     * Update an existing role
-     * @param {string} roleName - Role name
-     * @param {Object} roleConfig - Role configuration
-     * @returns {boolean} Success status
-     */
-    updateRole(roleName, roleConfig) {
-        try {
-            if (!this.roles[roleName]) {
-                throw new Error(`Role does not exist: ${roleName}`);
-            }
-            
-            // Update role properties
-            if (roleConfig.name) {
-                this.roles[roleName].name = roleConfig.name;
-            }
-            
-            if (roleConfig.description) {
-                this.roles[roleName].description = roleConfig.description;
-            }
-            
-            if (roleConfig.permissions) {
-                this.roles[roleName].permissions = roleConfig.permissions;
-            }
-            
-            // Save roles to localStorage
-            this.saveRoles();
-            
-            return true;
-        } catch (error) {
-            console.error('Error updating role:', error);
-            return false;
-        }
-    }
-    
-    /**
-     * Delete a role
-     * @param {string} roleName - Role name
-     * @returns {boolean} Success status
-     */
-    deleteRole(roleName) {
-        try {
-            if (!this.roles[roleName]) {
-                throw new Error(`Role does not exist: ${roleName}`);
-            }
-            
-            // Cannot delete built-in roles
-            if (['admin', 'operator', 'viewer'].includes(roleName)) {
-                throw new Error(`Cannot delete built-in role: ${roleName}`);
-            }
-            
-            // Remove role
-            delete this.roles[roleName];
-            
-            // Update users with this role to default role
-            Object.keys(this.userRoles).forEach(userId => {
-                if (this.userRoles[userId] === roleName) {
-                    this.userRoles[userId] = 'viewer';
+                if (this.serverPermissions[serverId].roleDenied) {
+                    delete this.serverPermissions[serverId].roleDenied[role];
                 }
-            });
-            
-            // Save roles and user roles
-            this.saveRoles();
-            this.saveUserRoles();
-            
+                this.saveServerPermissions();
+            }
             return true;
         } catch (error) {
-            console.error('Error deleting role:', error);
+            console.error('Error clearing role permissions for server:', error);
             return false;
         }
     }
-    
+
     /**
-     * Save roles to localStorage
-     */
-    saveRoles() {
-        try {
-            localStorage.setItem('mcp_roles', JSON.stringify(this.roles));
-        } catch (error) {
-            console.error('Error saving roles:', error);
-        }
-    }
-    
-    /**
-     * Get all roles
-     * @returns {Object} Roles object
+     * Get all roles defined in the system
+     * @returns {object} Dictionary of roles
      */
     getRoles() {
         return { ...this.roles };
     }
-    
+
     /**
      * Get permissions for a server
      * @param {string} serverId - Server ID
@@ -561,7 +375,7 @@ class PermissionManager {
             roleDenied: {}
         };
     }
-    
+
     /**
      * Reset permissions for a server
      * @param {string} serverId - Server ID
@@ -573,11 +387,122 @@ class PermissionManager {
                 delete this.serverPermissions[serverId];
                 this.saveServerPermissions();
             }
-            
+
             return true;
         } catch (error) {
             console.error('Error resetting server permissions:', error);
             return false;
+        }
+    }
+
+    /**
+     * Create a new role
+     * @param {string} roleName - Role name
+     * @param {Object} roleConfig - Role configuration
+     * @returns {boolean} Success status
+     */
+    createRole(roleName, roleConfig) {
+        try {
+            if (this.roles[roleName]) {
+                throw new Error(`Role already exists: ${roleName}`);
+            }
+
+            this.roles[roleName] = {
+                name: roleConfig.name || roleName,
+                description: roleConfig.description || '',
+                permissions: roleConfig.permissions || []
+            };
+
+            // Save roles to localStorage
+            this.saveRoles();
+
+            return true;
+        } catch (error) {
+            console.error('Error creating role:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Update an existing role
+     * @param {string} roleName - Role name
+     * @param {Object} roleConfig - Role configuration
+     * @returns {boolean} Success status
+     */
+    updateRole(roleName, roleConfig) {
+        try {
+            if (!this.roles[roleName]) {
+                throw new Error(`Role does not exist: ${roleName}`);
+            }
+
+            // Update role properties
+            if (roleConfig.name) {
+                this.roles[roleName].name = roleConfig.name;
+            }
+
+            if (roleConfig.description) {
+                this.roles[roleName].description = roleConfig.description;
+            }
+
+            if (roleConfig.permissions) {
+                this.roles[roleName].permissions = roleConfig.permissions;
+            }
+
+            // Save roles to localStorage
+            this.saveRoles();
+
+            return true;
+        } catch (error) {
+            console.error('Error updating role:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Delete a role
+     * @param {string} roleName - Role name
+     * @returns {boolean} Success status
+     */
+    deleteRole(roleName) {
+        try {
+            if (!this.roles[roleName]) {
+                throw new Error(`Role does not exist: ${roleName}`);
+            }
+
+            // Cannot delete built-in roles
+            if (['admin', 'operator', 'viewer'].includes(roleName)) {
+                throw new Error(`Cannot delete built-in role: ${roleName}`);
+            }
+
+            // Remove role
+            delete this.roles[roleName];
+
+            // Update users with this role to default role
+            Object.keys(this.userRoles).forEach(userId => {
+                if (this.userRoles[userId] === roleName) {
+                    this.userRoles[userId] = 'viewer';
+                }
+            });
+
+            // Save roles and user roles
+            this.saveRoles();
+            this.saveUserRoles();
+
+            return true;
+        } catch (error) {
+            console.error('Error deleting role:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Save roles to localStorage
+     */
+    saveRoles() {
+        try {
+            localStorage.setItem('mcp_roles', JSON.stringify(this.roles));
+        } catch (error) {
+            console.error('Error saving roles:', error);
         }
     }
 }

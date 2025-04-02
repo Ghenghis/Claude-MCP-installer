@@ -92,7 +92,19 @@ class PerformanceOptimizer {
      * Initialize optimization rules
      */
     initializeOptimizationRules() {
-        // CPU rules
+        this._initializeCpuRules();
+        this._initializeMemoryRules();
+        this._initializeDiskRules();
+        this._initializeNetworkRules();
+        this._initializeGeneralRules();
+    }
+    
+    /**
+     * Initialize CPU optimization rules
+     * @private
+     */
+    _initializeCpuRules() {
+        // CPU high usage rule
         this._defineRule(
             'cpu-high-usage',
             'High CPU Usage',
@@ -108,6 +120,7 @@ class PerformanceOptimizer {
             'high'
         );
         
+        // CPU spikes rule
         this._defineRule(
             'cpu-spikes',
             'CPU Usage Spikes',
@@ -125,8 +138,14 @@ class PerformanceOptimizer {
             ],
             'medium'
         );
-        
-        // Memory rules
+    }
+    
+    /**
+     * Initialize memory optimization rules
+     * @private
+     */
+    _initializeMemoryRules() {
+        // Memory high usage rule
         this._defineRule(
             'memory-high-usage',
             'High Memory Usage',
@@ -142,6 +161,7 @@ class PerformanceOptimizer {
             'high'
         );
         
+        // Memory growth rule
         this._defineRule(
             'memory-growth',
             'Memory Usage Growth',
@@ -170,8 +190,14 @@ class PerformanceOptimizer {
             ],
             'high'
         );
-        
-        // Disk rules
+    }
+    
+    /**
+     * Initialize disk optimization rules
+     * @private
+     */
+    _initializeDiskRules() {
+        // Disk high usage rule
         this._defineRule(
             'disk-high-usage',
             'High Disk Usage',
@@ -186,8 +212,14 @@ class PerformanceOptimizer {
             ],
             'medium'
         );
-        
-        // Network rules
+    }
+    
+    /**
+     * Initialize network optimization rules
+     * @private
+     */
+    _initializeNetworkRules() {
+        // Network high usage rule
         this._defineRule(
             'network-high-usage',
             'High Network Usage',
@@ -202,8 +234,14 @@ class PerformanceOptimizer {
             ],
             'medium'
         );
-        
-        // General rules
+    }
+    
+    /**
+     * Initialize general optimization rules
+     * @private
+     */
+    _initializeGeneralRules() {
+        // Overall high usage rule
         this._defineRule(
             'overall-high-usage',
             'Overall High Resource Usage',
@@ -240,51 +278,20 @@ class PerformanceOptimizer {
      */
     getOptimizationSuggestions(serverId) {
         try {
-            // Get current resources
-            const resources = resourceMonitor.getResources(serverId);
+            // Get resources, history, and statistics
+            const { resources, history, stats } = this._getResourcesAndStats(serverId);
             
             if (!resources) {
                 return [];
             }
             
-            // Get resource history and statistics
-            const history = resourceMonitor.getResourceHistory(serverId, { limit: 20 });
-            const stats = resourceMonitor.getResourceStatistics(serverId, { limit: 20 });
-            
-            // Apply optimization rules
-            const suggestions = [];
-            
-            for (const rule of this.optimizationRules) {
-                let conditionMet = false;
-                
-                if (rule.resourceType === 'general') {
-                    // General rule that checks multiple resources
-                    conditionMet = rule.condition(null, null, history, resources);
-                } else {
-                    // Resource-specific rule
-                    const resourceValue = resources[rule.resourceType];
-                    const resourceStats = stats[rule.resourceType];
-                    
-                    conditionMet = rule.condition(resourceValue, resourceStats, history);
-                }
-                
-                if (conditionMet) {
-                    suggestions.push({
-                        id: rule.id,
-                        name: rule.name,
-                        description: rule.description,
-                        suggestions: rule.suggestions,
-                        priority: rule.priority,
-                        resourceType: rule.resourceType
-                    });
-                }
-            }
+            // Apply standard optimization rules
+            const ruleSuggestions = this._applyOptimizationRules(resources, history, stats);
             
             // Add server-specific suggestions
-            const serverSpecificSuggestions = this.getServerSpecificSuggestions(serverId, resources);
-            suggestions.push(...serverSpecificSuggestions);
+            const serverSpecificSuggestions = this._getServerSpecificSuggestions(serverId, resources);
             
-            return suggestions;
+            return [...ruleSuggestions, ...serverSpecificSuggestions];
         } catch (error) {
             console.error(`Error getting optimization suggestions for server ${serverId}:`, error);
             return [];
@@ -292,12 +299,85 @@ class PerformanceOptimizer {
     }
     
     /**
+     * Retrieve resources, history, and stats for a server
+     * @param {string} serverId - Server ID
+     * @returns {Object} Object containing resources, history, and stats
+     * @private
+     */
+    _getResourcesAndStats(serverId) {
+        const resources = resourceMonitor.getResources(serverId);
+        const history = resourceMonitor.getResourceHistory(serverId, { limit: 20 });
+        const stats = resourceMonitor.getResourceStatistics(serverId, { limit: 20 });
+        
+        return { resources, history, stats };
+    }
+    
+    /**
+     * Apply standard optimization rules
+     * @param {Object} resources - Current resources
+     * @param {Array} history - Resource history
+     * @param {Object} stats - Resource statistics
+     * @returns {Array} Suggestions from applied rules
+     * @private
+     */
+    _applyOptimizationRules(resources, history, stats) {
+        const suggestions = [];
+        
+        for (const rule of this.optimizationRules) {
+            const conditionMet = this._checkRuleCondition(rule, resources, history, stats);
+            
+            if (conditionMet) {
+                suggestions.push(this._createSuggestionFromRule(rule));
+            }
+        }
+        
+        return suggestions;
+    }
+    
+    /**
+     * Check if a rule's condition is met
+     * @param {Object} rule - Optimization rule
+     * @param {Object} resources - Current resources
+     * @param {Array} history - Resource history
+     * @param {Object} stats - Resource statistics
+     * @returns {boolean} True if condition is met
+     * @private
+     */
+    _checkRuleCondition(rule, resources, history, stats) {
+        if (rule.resourceType === 'general') {
+            return rule.condition(null, null, history, resources);
+        } else {
+            const resourceValue = resources[rule.resourceType];
+            const resourceStats = stats[rule.resourceType];
+            return rule.condition(resourceValue, resourceStats, history);
+        }
+    }
+    
+    /**
+     * Create a suggestion object from a rule
+     * @param {Object} rule - Optimization rule
+     * @returns {Object} Suggestion object
+     * @private
+     */
+    _createSuggestionFromRule(rule) {
+        return {
+            id: rule.id,
+            name: rule.name,
+            description: rule.description,
+            suggestions: rule.suggestions,
+            priority: rule.priority,
+            resourceType: rule.resourceType
+        };
+    }
+    
+    /**
      * Get server-specific optimization suggestions
      * @param {string} serverId - Server ID
      * @param {Object} resources - Current resources
      * @returns {Array} Server-specific optimization suggestions
+     * @private
      */
-    getServerSpecificSuggestions(serverId, resources) {
+    _getServerSpecificSuggestions(serverId, resources) {
         try {
             const suggestions = [];
             const serverConfig = this.serverConfigs[serverId];
@@ -309,52 +389,15 @@ class PerformanceOptimizer {
             // Check server type and add specific suggestions
             switch (serverConfig.type) {
                 case 'node':
-                    if (resources.memory > this.thresholds.memory.medium) {
-                        suggestions.push({
-                            id: 'node-memory-limit',
-                            name: 'Node.js Memory Limit',
-                            description: 'Consider setting a memory limit for Node.js',
-                            suggestions: [
-                                'Set --max-old-space-size option to limit memory usage',
-                                'Implement proper garbage collection practices',
-                                'Use a process manager like PM2 to monitor and restart on high memory usage'
-                            ],
-                            priority: 'medium',
-                            resourceType: 'memory'
-                        });
-                    }
+                    this._addNodeSuggestions(suggestions, resources);
                     break;
                     
                 case 'python':
-                    if (resources.cpu > this.thresholds.cpu.medium) {
-                        suggestions.push({
-                            id: 'python-async',
-                            name: 'Python Async Processing',
-                            description: 'Consider using async processing for Python',
-                            suggestions: [
-                                'Use asyncio for I/O-bound operations',
-                                'Implement multiprocessing for CPU-bound tasks',
-                                'Consider using Gunicorn with multiple workers'
-                            ],
-                            priority: 'medium',
-                            resourceType: 'cpu'
-                        });
-                    }
+                    this._addPythonSuggestions(suggestions, resources);
                     break;
                     
                 case 'docker':
-                    suggestions.push({
-                        id: 'docker-resource-limits',
-                        name: 'Docker Resource Limits',
-                        description: 'Consider setting resource limits for Docker containers',
-                        suggestions: [
-                            'Set CPU and memory limits in Docker configuration',
-                            'Use Docker Compose to manage resource allocation',
-                            'Implement health checks to restart containers when needed'
-                        ],
-                        priority: 'medium',
-                        resourceType: 'general'
-                    });
+                    this._addDockerSuggestions(suggestions);
                     break;
                     
                 default:
@@ -367,6 +410,72 @@ class PerformanceOptimizer {
             console.error(`Error getting server-specific suggestions for server ${serverId}:`, error);
             return [];
         }
+    }
+    
+    /**
+     * Add Node.js specific suggestions
+     * @param {Array} suggestions - Suggestions array to modify
+     * @param {Object} resources - Current resources
+     * @private
+     */
+    _addNodeSuggestions(suggestions, resources) {
+        if (resources.memory > this.thresholds.memory.medium) {
+            suggestions.push({
+                id: 'node-memory-limit',
+                name: 'Node.js Memory Limit',
+                description: 'Consider setting a memory limit for Node.js',
+                suggestions: [
+                    'Set --max-old-space-size option to limit memory usage',
+                    'Implement proper garbage collection practices',
+                    'Use a process manager like PM2 to monitor and restart on high memory usage'
+                ],
+                priority: 'medium',
+                resourceType: 'memory'
+            });
+        }
+    }
+    
+    /**
+     * Add Python specific suggestions
+     * @param {Array} suggestions - Suggestions array to modify
+     * @param {Object} resources - Current resources
+     * @private
+     */
+    _addPythonSuggestions(suggestions, resources) {
+        if (resources.cpu > this.thresholds.cpu.medium) {
+            suggestions.push({
+                id: 'python-async',
+                name: 'Python Async Processing',
+                description: 'Consider using async processing for Python',
+                suggestions: [
+                    'Use asyncio for I/O-bound operations',
+                    'Implement multiprocessing for CPU-bound tasks',
+                    'Consider using Gunicorn with multiple workers'
+                ],
+                priority: 'medium',
+                resourceType: 'cpu'
+            });
+        }
+    }
+    
+    /**
+     * Add Docker specific suggestions
+     * @param {Array} suggestions - Suggestions array to modify
+     * @private
+     */
+    _addDockerSuggestions(suggestions) {
+        suggestions.push({
+            id: 'docker-resource-limits',
+            name: 'Docker Resource Limits',
+            description: 'Consider setting resource limits for Docker containers',
+            suggestions: [
+                'Set CPU and memory limits in Docker configuration',
+                'Use Docker Compose to manage resource allocation',
+                'Implement health checks to restart containers when needed'
+            ],
+            priority: 'medium',
+            resourceType: 'general'
+        });
     }
     
     /**

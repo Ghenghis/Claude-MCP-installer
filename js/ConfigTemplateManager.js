@@ -9,6 +9,41 @@ class ConfigTemplateManager {
     constructor() {
         this.templates = {};
         this.defaultTemplates = {};
+        // Centralized definitions for cleaner registration
+        this._templateDefinitions = {
+            'brave-search': {
+                name: 'Brave Search MCP Server',
+                description: 'Configuration for the Brave Search MCP server, providing web and local search capabilities.'
+            },
+            'filesystem': {
+                name: 'Filesystem MCP Server',
+                description: 'Configuration for the Filesystem MCP server, enabling file operations.'
+            },
+            'github': {
+                name: 'GitHub MCP Server',
+                description: 'Configuration for the GitHub MCP server, interacting with GitHub repositories.'
+            },
+            'memory': {
+                name: 'Memory MCP Server',
+                description: 'Configuration for the Memory MCP server (Knowledge Graph).'
+            },
+            'sequential-thinking': {
+                name: 'Sequential Thinking MCP Server',
+                description: 'Configuration for the Sequential Thinking MCP server.'
+            },
+            'claude': {
+                name: 'Claude Context MCP Server',
+                description: 'Configuration for the Claude Context MCP server.'
+            },
+            'process-monitor': {
+                name: 'Process Monitor MCP Server',
+                description: 'Configuration for the Process Monitor MCP server.'
+            },
+            'generic': {
+                name: 'Generic MCP Server',
+                description: 'A generic template suitable for basic MCP servers.'
+            }
+        };
         
         // Initialize template manager
         this.initializeTemplates();
@@ -66,16 +101,142 @@ class ConfigTemplateManager {
      * These are the built-in templates that come with the application
      */
     initializeDefaultTemplates() {
-        // Initialize each server type template using helper methods
-        this._initBraveSearchTemplate();
-        this._initFilesystemTemplate();
-        this._initGithubTemplate();
-        this._initSequentialThinkingTemplate();
-        this._initMemoryTemplate();
-        this._initCustomTemplate();
-        
-        // Continue with other templates as needed
-        logger.info('Default templates initialized successfully');
+        // Register templates using the new helper
+        Object.keys(this._templateDefinitions).forEach(id => {
+            try {
+                this._registerTemplate(id);
+            } catch (error) {
+                logger.error(`Failed to register template for ${id}:`, error);
+            }
+        });
+    }
+    
+    /**
+     * Dynamically registers a template based on its ID.
+     * @private
+     * @param {string} id - The template ID (e.g., 'brave-search', 'filesystem').
+     */
+    _registerTemplate(id) {
+        const definition = this._templateDefinitions[id];
+        if (!definition) {
+            logger.error(`No definition found for template ID: ${id}`);
+            return;
+        }
+
+        // Construct getter method names (e.g., _getBraveSearchDefaultConfig)
+        const pascalCaseId = id.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+        const defaultConfigGetter = `_get${pascalCaseId}DefaultConfig`;
+        const uniqueSchemaGetter = `_get${pascalCaseId}UniqueSchema`;
+
+        // Check if getter methods exist
+        const hasDefaultGetter = typeof this[defaultConfigGetter] === 'function';
+        const hasSchemaGetter = typeof this[uniqueSchemaGetter] === 'function';
+
+        if (!hasDefaultGetter || !hasSchemaGetter) {
+            logger.error(`Missing getter methods for template ID: ${id}. Expected ${defaultConfigGetter} (found: ${hasDefaultGetter}) and ${uniqueSchemaGetter} (found: ${hasSchemaGetter})`);
+            return;
+        }
+
+        // Get configurations by calling the dynamically determined methods
+        const uniqueDefaultConfig = this[defaultConfigGetter]();
+        const uniqueSchemaConfig = this[uniqueSchemaGetter]();
+
+        // Group metadata
+        const metadata = {
+            id,
+            name: definition.name,
+            description: definition.description
+        };
+
+        // Call the main define function
+        this._defineTemplate(metadata, uniqueSchemaConfig, uniqueDefaultConfig);
+    }
+    
+    /**
+     * Helper method to define a template with standardized structure
+     * @private
+     * @param {Object} metadata - Template metadata (id, name, description)
+     * @param {Object} uniqueSchemaConfig - Object with unique schema parts (port, required, properties)
+     * @param {Object} uniqueDefaultConfig - Object with unique default config values
+     */
+    _defineTemplate(metadata, uniqueSchemaConfig, uniqueDefaultConfig) {
+        try {
+            const { id, name, description } = metadata;
+            
+            // Validate inputs first
+            if (!this._validateDefineTemplateInputs(metadata, uniqueSchemaConfig, uniqueDefaultConfig)) {
+                return;
+            }
+
+            const commonProperties = this._createCommonSchemaProperties();
+            
+            // --- Construct Default Config --- 
+            const finalDefaultConfig = this._constructFinalDefaultConfig(uniqueSchemaConfig, uniqueDefaultConfig, commonProperties);
+            
+            // --- Construct Schema --- 
+            const finalSchema = this._constructFinalSchema(uniqueSchemaConfig, commonProperties);
+            
+            this.defaultTemplates[id] = {
+                id,
+                name,
+                version: '1.0.0',
+                serverType: id,
+                description,
+                configSchema: finalSchema,
+                defaultConfig: finalDefaultConfig // Use the constructed default config
+            };
+        } catch (error) {
+            logger.error('Error defining template:', error);
+        }
+    }
+    
+    /**
+     * Validates the inputs required for defining a template.
+     * @private
+     * @param {Object} metadata - Template metadata (id, name, description).
+     * @param {Object} uniqueSchemaConfig - Unique schema parts.
+     * @param {Object} uniqueDefaultConfig - Unique default config values.
+     * @returns {boolean} True if inputs are valid, false otherwise.
+     */
+    _validateDefineTemplateInputs(metadata, uniqueSchemaConfig, uniqueDefaultConfig) {
+        const { id, name, description } = metadata || {}; // Destructure safely
+
+        const isIdValid = !!id;
+        const isNameValid = !!name;
+        const isDescriptionValid = !!description;
+        const isSchemaConfigValid = !!uniqueSchemaConfig;
+        const isDefaultConfigValid = !!uniqueDefaultConfig;
+
+        const allInputsValid = isIdValid && isNameValid && isDescriptionValid &&
+                               isSchemaConfigValid && isDefaultConfigValid;
+
+        if (!allInputsValid) {
+            logger.error('Invalid template definition: Missing one or more required inputs.');
+            // Optionally log which specific inputs are missing if needed for debugging
+        }
+
+        return allInputsValid;
+    }
+    
+    /**
+     * Constructs the final default configuration object by merging base defaults with unique ones.
+     * @private
+     * @param {Object} uniqueSchemaConfig - Unique schema parts (used for default port).
+     * @param {Object} uniqueDefaultConfig - Unique default config values.
+     * @param {Object} commonProperties - Common schema properties (used for base defaults).
+     * @returns {Object} The final default configuration object.
+     */
+    _constructFinalDefaultConfig(uniqueSchemaConfig, uniqueDefaultConfig, commonProperties) {
+        const baseDefaultConfig = {
+            port: uniqueSchemaConfig.port || commonProperties.port.default, // Use specific port or common default
+            host: commonProperties.host.default,
+            timeout: commonProperties.timeout.default,
+            log_level: commonProperties.log_level.default,
+        };
+        return {
+            ...baseDefaultConfig,
+            ...uniqueDefaultConfig // Merge unique defaults
+        };
     }
     
     /**
@@ -113,454 +274,286 @@ class ConfigTemplateManager {
     }
     
     /**
-     * Initialize the Brave Search MCP server template
+     * Constructs the final schema object by merging common and unique schema parts.
      * @private
+     * @param {Object} uniqueSchemaConfig - Unique schema parts.
+     * @param {Object} commonProperties - Common schema properties.
+     * @returns {Object} The final schema object.
      */
-    _initBraveSearchTemplate() {
-        this.defaultTemplates['brave-search'] = {
-            id: 'brave-search',
-            name: 'Brave Search MCP Server',
-            description: 'Template for Brave Search MCP server configuration',
-            version: '1.0.0',
-            serverType: 'brave-search',
-            configSchema: {
-                type: 'object',
-                required: ['port', 'host', 'api_key'],
-                properties: {
-                    ...this._createCommonSchemaProperties(), // Include common properties
-                    port: { // Override default port
-                        type: 'number',
-                        minimum: 1024,
-                        maximum: 65535,
-                        default: 3000,
-                        description: 'Port number for the server'
-                    },
-                    api_key: {
-                        type: 'string',
-                        description: 'Brave Search API key'
-                    },
-                    timeout: {
-                        type: 'number',
-                        minimum: 1000,
-                        default: 30000,
-                        description: 'Request timeout in milliseconds'
-                    },
-                    max_requests_per_minute: {
-                        type: 'number',
-                        minimum: 1,
-                        default: 60,
-                        description: 'Maximum number of requests per minute'
-                    },
-                    cache_enabled: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable response caching'
-                    },
-                    cache_ttl: {
-                        type: 'number',
-                        minimum: 60,
-                        default: 3600,
-                        description: 'Cache TTL in seconds'
-                    },
-                    search_settings: {
-                        type: 'object',
-                        properties: {
-                            default_search_type: {
-                                type: 'string',
-                                enum: ['web', 'news', 'local'],
-                                default: 'web',
-                                description: 'Default search type'
-                            },
-                            default_results_count: {
-                                type: 'number',
-                                minimum: 1,
-                                maximum: 20,
-                                default: 10,
-                                description: 'Default number of results to return'
-                            },
-                            content_filter: {
-                                type: 'string',
-                                enum: ['strict', 'moderate', 'off'],
-                                default: 'moderate',
-                                description: 'Content filter setting'
-                            }
-                        }
-                    }
-                }
-            },
-            defaultConfig: {
-                port: 3000,
-                host: 'localhost',
-                timeout: 30000,
-                max_requests_per_minute: 60,
-                cache_enabled: true,
-                cache_ttl: 3600,
-                log_level: 'info',
-                search_settings: {
-                    default_search_type: 'web',
-                    default_results_count: 10,
-                    content_filter: 'moderate'
-                }
+    _constructFinalSchema(uniqueSchemaConfig, commonProperties) {
+        // Clone common properties to avoid modifying the original object
+        const localCommonProperties = JSON.parse(JSON.stringify(commonProperties));
+
+        // Override the port in common properties if specified in unique schema
+        if (uniqueSchemaConfig.port) {
+            localCommonProperties.port = {
+                ...localCommonProperties.port,
+                default: uniqueSchemaConfig.port
+            };
+        }
+
+        // Combine required fields: common ones + unique ones
+        const commonRequired = ['port', 'host']; // Base required fields
+        const uniqueRequired = uniqueSchemaConfig.required || [];
+        const finalRequired = [...new Set([...commonRequired, ...uniqueRequired])];
+
+        return {
+            type: 'object',
+            required: finalRequired,
+            properties: {
+                ...localCommonProperties,
+                ...uniqueSchemaConfig.properties // Merge unique properties
             }
         };
     }
     
     /**
-     * Initialize the Filesystem MCP server template
+     * Helper to create a schema definition for a nested object property.
      * @private
+     * @param {Object} properties - The schema definitions for the nested properties.
+     * @param {Object} defaultObject - The default configuration object for this nested level.
+     * @returns {Object} The complete schema definition for the nested object.
      */
-    _initFilesystemTemplate() {
-        this.defaultTemplates['filesystem'] = {
-            id: 'filesystem',
-            name: 'Filesystem MCP Server',
-            description: 'Template for Filesystem MCP server configuration',
-            version: '1.0.0',
-            serverType: 'filesystem',
-            configSchema: {
-                type: 'object',
-                required: ['port', 'host', 'allowed_directories'],
-                properties: {
-                    ...this._createCommonSchemaProperties(), // Include common properties
-                    port: { // Override default port
-                        type: 'number',
-                        minimum: 1024,
-                        maximum: 65535,
-                        default: 3001,
-                        description: 'Port number for the server'
+    _createNestedObjectSchema(properties, defaultObject) {
+        return {
+            type: 'object',
+            properties: properties,
+            default: defaultObject
+        };
+    }
+    
+    /**
+     * Gets the default configuration for the Brave Search MCP server template.
+     * @private
+     * @returns {Object} Default configuration object.
+     */
+    _getBraveSearchDefaultConfig() {
+        return {
+            port: 3000,
+            host: 'localhost',
+            timeout: 30000,
+            max_requests_per_minute: 60,
+            cache_enabled: true,
+            cache_ttl: 3600,
+            log_level: 'info',
+            search_settings: {
+                default_search_type: 'web',
+                default_results_count: 10,
+                content_filter: 'moderate'
+            }
+        };
+    }
+
+    /**
+     * Gets the unique schema configuration for the Brave Search MCP server template.
+     * @private
+     * @returns {Object} Unique schema configuration object.
+     */
+    _getBraveSearchUniqueSchema() {
+        const defaultConfig = this._getBraveSearchDefaultConfig(); // Needed for default values in schema
+        return {
+            port: 3000, // Specific default port for this template
+            required: ['api_key'], // Only fields beyond common [port, host]
+            properties: {
+                api_key: { type: 'string', description: 'Brave Search API key' },
+                max_requests_per_minute: { type: 'number', minimum: 1, default: defaultConfig.max_requests_per_minute, description: 'Maximum requests per minute' },
+                cache_enabled: { type: 'boolean', default: defaultConfig.cache_enabled, description: 'Enable response caching' },
+                cache_ttl: { type: 'number', minimum: 60, default: defaultConfig.cache_ttl, description: 'Cache TTL in seconds' },
+                search_settings: this._createNestedObjectSchema(
+                    { // Properties for search_settings
+                        default_search_type: { type: 'string', enum: ['web', 'local'], default: defaultConfig.search_settings.default_search_type, description: 'Default search type' },
+                        default_results_count: { type: 'number', minimum: 1, maximum: 20, default: defaultConfig.search_settings.default_results_count, description: 'Default number of results' },
+                        content_filter: { type: 'string', enum: ['off', 'moderate', 'strict'], default: defaultConfig.search_settings.content_filter, description: 'Content filter level' }
                     },
-                    allowed_directories: {
-                        type: 'array',
-                        items: {
-                            type: 'string'
-                        },
-                        description: 'List of directories that can be accessed'
-                    },
-                    timeout: {
-                        type: 'number',
-                        minimum: 1000,
-                        default: 30000,
-                        description: 'File operation timeout in milliseconds'
-                    },
-                    max_file_size: {
-                        type: 'number',
-                        minimum: 1,
-                        default: 10485760, // 10MB
-                        description: 'Maximum file size in bytes'
-                    },
-                    cache_enabled: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable file caching'
-                    },
-                    operation_timeout: {
-                        type: 'number',
-                        minimum: 1000,
-                        default: 5000,
-                        description: 'Timeout for file operations in milliseconds'
-                    }
-                }
-            },
-            defaultConfig: {
-                port: 3001,
-                host: 'localhost',
-                allowed_directories: [],
-                timeout: 30000,
-                max_file_size: 10485760,
-                log_level: 'info',
-                cache_enabled: true,
-                operation_timeout: 5000
+                    defaultConfig.search_settings // Default object for search_settings
+                )
             }
         };
     }
     
     /**
-     * Initialize the GitHub MCP server template
+     * Gets the default configuration for the Filesystem MCP server template.
      * @private
+     * @returns {Object} Default configuration object.
      */
-    _initGithubTemplate() {
-        this.defaultTemplates['github'] = {
-            id: 'github',
-            name: 'GitHub MCP Server',
-            description: 'Template for GitHub MCP server configuration',
-            version: '1.0.0',
-            serverType: 'github',
-            configSchema: {
-                type: 'object',
-                required: ['port', 'host', 'auth_token'],
-                properties: {
-                    ...this._createCommonSchemaProperties(), // Include common properties
-                    port: { // Override default port
-                        type: 'number',
-                        minimum: 1024,
-                        maximum: 65535,
-                        default: 3002,
-                        description: 'Port number for the server'
-                    },
-                    auth_token: {
-                        type: 'string',
-                        description: 'GitHub Personal Access Token'
-                    },
-                    api_base_url: {
-                        type: 'string',
-                        default: 'https://api.github.com',
-                        description: 'GitHub API base URL'
-                    },
-                    timeout: {
-                        type: 'number',
-                        minimum: 1000,
-                        default: 30000,
-                        description: 'API request timeout in milliseconds'
-                    },
-                    cache_enabled: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable response caching'
-                    },
-                    cache_ttl: {
-                        type: 'number',
-                        minimum: 60,
-                        default: 300,
-                        description: 'Cache TTL in seconds'
-                    },
-                    rate_limit_handling: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable automatic handling of rate limits'
-                    }
-                }
-            },
-            defaultConfig: {
-                port: 3002,
-                host: 'localhost',
-                api_base_url: 'https://api.github.com',
-                timeout: 30000,
-                cache_enabled: true,
-                cache_ttl: 300,
-                rate_limit_handling: true,
-                log_level: 'info'
+    _getFilesystemDefaultConfig() {
+        return {
+            port: 3001,
+            host: 'localhost',
+            timeout: 30000,
+            log_level: 'info',
+            allowed_directories: [],
+            max_file_size: 10485760, // 10MB
+            cache_enabled: true,
+            operation_timeout: 5000
+        };
+    }
+
+    /**
+     * Gets the unique schema configuration for the Filesystem MCP server template.
+     * @private
+     * @returns {Object} Unique schema configuration object.
+     */
+    _getFilesystemUniqueSchema() {
+        const defaultConfig = this._getFilesystemDefaultConfig(); // Needed for defaults in schema
+        return {
+            port: 3001,
+            required: ['allowed_directories'],
+            properties: {
+                allowed_directories: { type: 'array', items: { type: 'string' }, description: 'List of directories that can be accessed', default: defaultConfig.allowed_directories },
+                max_file_size: { type: 'number', minimum: 1, default: defaultConfig.max_file_size, description: 'Maximum file size in bytes' },
+                cache_enabled: { type: 'boolean', default: defaultConfig.cache_enabled, description: 'Enable file caching' },
+                operation_timeout: { type: 'number', minimum: 1000, default: defaultConfig.operation_timeout, description: 'Timeout for file operations in milliseconds' }
             }
         };
     }
     
     /**
-     * Initialize the Sequential Thinking MCP server template
+     * Gets the default configuration for the GitHub MCP server template.
      * @private
+     * @returns {Object} Default configuration object.
      */
-    _initSequentialThinkingTemplate() {
-        this.defaultTemplates['sequential-thinking'] = {
-            id: 'sequential-thinking',
-            name: 'Sequential Thinking MCP Server',
-            description: 'Template for Sequential Thinking MCP server configuration',
-            version: '1.0.0',
-            serverType: 'sequential-thinking',
-            configSchema: {
-                type: 'object',
-                required: ['port', 'host'],
-                properties: {
-                    ...this._createCommonSchemaProperties(), // Include common properties
-                    port: { // Override default port
-                        type: 'number',
-                        minimum: 1024,
-                        maximum: 65535,
-                        default: 3003,
-                        description: 'Port number for the server'
-                    },
-                    max_thoughts: {
-                        type: 'number',
-                        minimum: 1,
-                        maximum: 100,
-                        default: 20,
-                        description: 'Maximum number of thoughts per session'
-                    },
-                    default_total_thoughts: {
-                        type: 'number',
-                        minimum: 1,
-                        maximum: 50,
-                        default: 5,
-                        description: 'Default number of total thoughts'
-                    },
-                    thought_validation: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable thought validation'
-                    },
-                    timeout: {
-                        type: 'number',
-                        minimum: 1000,
-                        default: 60000,
-                        description: 'Session timeout in milliseconds'
-                    }
-                }
-            },
-            defaultConfig: {
-                port: 3003,
-                host: 'localhost',
-                max_thoughts: 20,
-                default_total_thoughts: 5,
-                thought_validation: true,
-                timeout: 60000,
-                log_level: 'info'
+    _getGitHubDefaultConfig() {
+        return {
+            port: 3002,
+            host: 'localhost',
+            timeout: 60000,
+            log_level: 'info',
+            base_url: 'https://api.github.com',
+            per_page: 30,
+            max_retries: 3,
+            retry_delay: 1000
+        };
+    }
+
+    /**
+     * Gets the unique schema configuration for the GitHub MCP server template.
+     * @private
+     * @returns {Object} Unique schema configuration object.
+     */
+    _getGitHubUniqueSchema() {
+        const defaultConfig = this._getGitHubDefaultConfig(); // Needed for defaults in schema
+        return {
+            port: 3002,
+            required: ['auth_token'],
+            properties: {
+                auth_token: { type: 'string', description: 'GitHub Personal Access Token (PAT)' },
+                base_url: { type: 'string', format: 'url', default: defaultConfig.base_url, description: 'GitHub API base URL (for Enterprise)' },
+                per_page: { type: 'number', minimum: 1, maximum: 100, default: defaultConfig.per_page, description: 'Default results per page' },
+                max_retries: { type: 'number', minimum: 0, default: defaultConfig.max_retries, description: 'Maximum retries for failed requests' },
+                retry_delay: { type: 'number', minimum: 500, default: defaultConfig.retry_delay, description: 'Delay between retries in milliseconds' }
             }
         };
     }
     
     /**
-     * Initialize the Memory MCP server template
+     * Gets the default configuration for the Sequential Thinking MCP server template.
      * @private
+     * @returns {Object} Default configuration object.
      */
-    _initMemoryTemplate() {
-        this.defaultTemplates['memory'] = {
-            id: 'memory',
-            name: 'Memory MCP Server',
-            description: 'Template for Memory MCP server configuration',
-            version: '1.0.0',
-            serverType: 'memory',
-            configSchema: {
-                type: 'object',
-                required: ['port', 'host'],
-                properties: {
-                    ...this._createCommonSchemaProperties(), // Include common properties
-                    port: { // Override default port
-                        type: 'number',
-                        minimum: 1024,
-                        maximum: 65535,
-                        default: 3004,
-                        description: 'Port number for the server'
-                    },
-                    storage_type: {
-                        type: 'string',
-                        enum: ['memory', 'file', 'database'],
-                        default: 'memory',
-                        description: 'Storage type for the memory server'
-                    },
-                    storage_path: {
-                        type: 'string',
-                        description: 'Path for file-based storage (if storage_type is file)'
-                    },
-                    database_connection: {
-                        type: 'object',
-                        properties: {
-                            url: {
-                                type: 'string',
-                                description: 'Database connection URL'
-                            },
-                            auth_required: {
-                                type: 'boolean',
-                                default: false,
-                                description: 'Whether authentication is required'
-                            },
-                            username: {
-                                type: 'string',
-                                description: 'Database username'
-                            },
-                            password: {
-                                type: 'string',
-                                description: 'Database password'
-                            }
-                        },
-                        description: 'Database connection details (if storage_type is database)'
-                    },
-                    max_entity_count: {
-                        type: 'number',
-                        minimum: 100,
-                        default: 10000,
-                        description: 'Maximum number of entities to store'
-                    },
-                    backup_enabled: {
-                        type: 'boolean',
-                        default: true,
-                        description: 'Enable automatic backups'
-                    },
-                    backup_interval: {
-                        type: 'number',
-                        minimum: 60,
-                        default: 3600,
-                        description: 'Backup interval in seconds'
-                    }
-                }
-            },
-            defaultConfig: {
-                port: 3004,
-                host: 'localhost',
-                storage_type: 'memory',
-                max_entity_count: 10000,
-                backup_enabled: true,
-                backup_interval: 3600,
-                log_level: 'info'
+    _getSequentialThinkingDefaultConfig() {
+        return {
+            port: 3003,
+            host: 'localhost',
+            timeout: 45000,
+            log_level: 'info',
+            max_depth: 10,
+            allow_branching: true,
+            pruning_enabled: false
+        };
+    }
+
+    /**
+     * Gets the unique schema configuration for the Sequential Thinking MCP server template.
+     * @private
+     * @returns {Object} Unique schema configuration object.
+     */
+    _getSequentialThinkingUniqueSchema() {
+        const defaultConfig = this._getSequentialThinkingDefaultConfig(); // Needed for defaults
+        return {
+            port: 3003,
+            required: [], // No unique required fields besides common ones
+            properties: {
+                max_depth: { type: 'number', minimum: 1, default: defaultConfig.max_depth, description: 'Maximum depth of sequential thoughts' },
+                allow_branching: { type: 'boolean', default: defaultConfig.allow_branching, description: 'Allow branching of thought processes' },
+                pruning_enabled: { type: 'boolean', default: defaultConfig.pruning_enabled, description: 'Enable automatic pruning of old thoughts' }
             }
         };
     }
     
     /**
-     * Initialize the Custom MCP server template
+     * Gets the default configuration for the Memory MCP server template.
      * @private
+     * @returns {Object} Default configuration object.
      */
-    _initCustomTemplate() {
-        this.defaultTemplates['custom'] = {
-            id: 'custom',
-            name: 'Custom MCP Server',
-            description: 'Template for custom MCP server configuration',
-            version: '1.0.0',
-            serverType: 'custom',
-            configSchema: {
-                type: 'object',
-                required: ['port', 'server_name', 'command'],
-                properties: {
-                    ...this._createCommonSchemaProperties(), // Include common properties
-                    port: { // Override default port
-                        type: 'number',
-                        minimum: 1024,
-                        maximum: 65535,
-                        default: 3010,
-                        description: 'Port number for the server'
-                    },
-                    server_name: {
-                        type: 'string',
-                        description: 'Name of the custom server'
-                    },
-                    command: {
-                        type: 'string',
-                        description: 'Command to start the server'
-                    },
-                    working_directory: {
-                        type: 'string',
-                        description: 'Working directory for the server'
-                    },
-                    environment_variables: {
-                        type: 'object',
-                        additionalProperties: {
-                            type: 'string'
-                        },
-                        description: 'Environment variables for the server'
-                    },
-                    startup_args: {
-                        type: 'array',
-                        items: {
-                            type: 'string'
-                        },
-                        description: 'Command line arguments to pass to the server on startup'
-                    },
-                    health_check_endpoint: {
-                        type: 'string',
-                        description: 'Endpoint for server health checks'
-                    },
-                    health_check_interval: {
-                        type: 'number',
-                        minimum: 1000,
-                        default: 30000,
-                        description: 'Interval for health checks in milliseconds'
-                    }
-                }
-            },
-            defaultConfig: {
-                port: 3010,
-                host: 'localhost',
-                environment_variables: {},
-                startup_args: [],
-                health_check_interval: 30000,
-                log_level: 'info'
+    _getMemoryDefaultConfig() {
+        return {
+            port: 3004,
+            host: 'localhost',
+            timeout: 30000,
+            log_level: 'info',
+            database_path: './memory_db.json',
+            autosave_interval: 60000 // 1 minute
+        };
+    }
+
+    /**
+     * Gets the unique schema configuration for the Memory MCP server template.
+     * @private
+     * @returns {Object} Unique schema configuration object.
+     */
+    _getMemoryUniqueSchema() {
+        const defaultConfig = this._getMemoryDefaultConfig(); // Needed for defaults
+        return {
+            port: 3004,
+            required: ['database_path'],
+            properties: {
+                database_path: { type: 'string', description: 'Path to the memory database file', default: defaultConfig.database_path },
+                autosave_interval: { type: 'number', minimum: 10000, default: defaultConfig.autosave_interval, description: 'Autosave interval in milliseconds' }
             }
         };
+    }
+    
+    /**
+     * Gets the default configuration for the Generic MCP server template.
+     * @private
+     * @returns {Object} Default configuration object.
+     */
+    _getGenericMCPDefaultConfig() {
+        return {
+            port: 3000, // Default generic port
+            host: 'localhost',
+            timeout: 15000,
+            log_level: 'info'
+            // No other unique defaults for the most basic template
+        };
+    }
+
+    /**
+     * Gets the unique schema configuration for the Generic MCP server template.
+     * @private
+     * @returns {Object} Unique schema configuration object.
+     */
+    _getGenericMCPUniqueSchema() {
+        // const defaultConfig = this._getGenericMCPDefaultConfig(); // Needed if schema had defaults
+        return {
+            port: 3000,
+            required: [], // No unique required properties
+            properties: {
+                // No unique properties for the most basic template
+            }
+        };
+    }
+    
+    /**
+     * Register any custom templates
+     * This method can be extended to add more templates
+     * @private
+     */
+    _registerCustomTemplates() {
+        // Register custom templates here
+        // Example:
+        // this._registerCustomApiTemplate();
     }
     
     /**

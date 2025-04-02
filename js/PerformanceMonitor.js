@@ -8,6 +8,14 @@ import performanceOptimizer from './PerformanceOptimizer.js';
 import performanceVisualizer from './PerformanceVisualizer.js';
 import logger from './logger.js';
 
+// Define severity level constants for clarity
+const SEVERITY_LEVELS = {
+    CRITICAL: 2,
+    WARNING: 1,
+    GOOD: 0,
+    UNKNOWN: -1
+};
+
 class PerformanceMonitor {
     constructor() {
         this.resourceMonitor = resourceMonitor;
@@ -192,46 +200,71 @@ class PerformanceMonitor {
     }
     
     /**
+     * Handles the common logic for starting or stopping monitoring for a server.
+     * @param {string} serverId - The ID of the server.
+     * @param {Object} actionConfig - Configuration object for the action.
+     * @returns {boolean} Success status.
+     * @private
+     */
+    _handleMonitoringStateChange(serverId, actionConfig) {
+        const { type, resourceMonitorAction, eventName, updateStateFunc, getEventDetailsFunc } = actionConfig;
+        const actionVerb = type === 'start' ? 'Starting' : 'Stopping';
+        
+        try {
+            logger.info(`${actionVerb} performance monitoring for server ${serverId}`);
+            
+            const success = resourceMonitorAction(); // Call the provided resource monitor function
+            
+            if (success) {
+                updateStateFunc(); // Update the internal monitored server state
+                
+                // Create and dispatch custom event
+                const eventDetail = getEventDetailsFunc();
+                const event = new CustomEvent(eventName, { detail: eventDetail });
+                window.dispatchEvent(event);
+                
+                logger.info(`Successfully ${type === 'start' ? 'started' : 'stopped'} monitoring for ${serverId}.`);
+                return true;
+            } else {
+                logger.warn(`Resource monitor action failed when trying to ${type} monitoring for ${serverId}.`);
+                return false;
+            }
+        } catch (error) {
+            logger.error(`Error ${type}ing performance monitoring for server ${serverId}:`, error);
+            return false;
+        }
+    }
+    
+    /**
      * Start monitoring a server
      * @param {string} serverId - Server ID
-     * @param {Object} options - Monitoring options
+     * @param {Object} options - Monitoring options (e.g., { name: 'MyServer', type: 'web' })
      * @returns {boolean} Success status
      */
     startMonitoring(serverId, options = {}) {
-        try {
-            logger.info(`Starting performance monitoring for server ${serverId}`);
-            
-            // Start resource monitoring
-            const success = this.resourceMonitor.startMonitoring(serverId, options);
-            
-            if (success) {
-                // Store server in monitoredServers
+        if (this.monitoredServers[serverId]) {
+            return false; // Already monitoring
+        }
+        
+        const actionConfig = {
+            type: 'start',
+            resourceMonitorAction: () => this.resourceMonitor.startMonitoring(serverId),
+            eventName: 'monitoring-started',
+            updateStateFunc: () => {
                 this.monitoredServers[serverId] = {
                     id: serverId,
                     name: options.name || serverId,
                     type: options.type || 'unknown',
                     startTime: Date.now(),
-                    options
+                    intervalId: null, // Or manage actual interval if needed here
+                    status: 'running'
                 };
-                
-                // Create custom event
-                const event = new CustomEvent('monitoring-started', {
-                    detail: {
-                        serverId,
-                        options,
-                        timestamp: Date.now()
-                    }
-                });
-                
-                // Dispatch event
-                window.dispatchEvent(event);
-            }
-            
-            return success;
-        } catch (error) {
-            logger.error(`Error starting performance monitoring for server ${serverId}:`, error);
-            return false;
-        }
+                logger.debug("Updated monitoredServers state after start:", this.monitoredServers);
+            },
+            getEventDetailsFunc: () => ({ serverId: serverId })
+        };
+        
+        return this._handleMonitoringStateChange(serverId, actionConfig);
     }
     
     /**
@@ -240,33 +273,22 @@ class PerformanceMonitor {
      * @returns {boolean} Success status
      */
     stopMonitoring(serverId) {
-        try {
-            logger.info(`Stopping performance monitoring for server ${serverId}`);
-            
-            // Stop resource monitoring
-            const success = this.resourceMonitor.stopMonitoring(serverId);
-            
-            if (success) {
-                // Remove server from monitoredServers
-                delete this.monitoredServers[serverId];
-                
-                // Create custom event
-                const event = new CustomEvent('monitoring-stopped', {
-                    detail: {
-                        serverId,
-                        timestamp: Date.now()
-                    }
-                });
-                
-                // Dispatch event
-                window.dispatchEvent(event);
-            }
-            
-            return success;
-        } catch (error) {
-            logger.error(`Error stopping performance monitoring for server ${serverId}:`, error);
-            return false;
+        if (!this.monitoredServers[serverId]) {
+            return false; // Not currently monitoring
         }
+        
+        const actionConfig = {
+            type: 'stop',
+            resourceMonitorAction: () => this.resourceMonitor.stopMonitoring(serverId),
+            eventName: 'monitoring-stopped',
+            updateStateFunc: () => {
+                delete this.monitoredServers[serverId];
+                logger.debug("Updated monitoredServers state after stop:", this.monitoredServers);
+            },
+            getEventDetailsFunc: () => ({ serverId: serverId })
+        };
+        
+        return this._handleMonitoringStateChange(serverId, actionConfig);
     }
     
     /**
@@ -518,92 +540,10 @@ class PerformanceMonitor {
                 const mediumPriority = suggestions.filter(s => s.priority === 'medium');
                 const lowPriority = suggestions.filter(s => s.priority === 'low');
                 
-                // Render high priority suggestions
-                if (highPriority.length > 0) {
-                    suggestionsHtml += '<div class="suggestions-group">';
-                    suggestionsHtml += '<h5><span class="badge bg-danger">Critical Issues</span></h5>';
-                    suggestionsHtml += '<ul class="list-group">';
-                    
-                    for (const suggestion of highPriority) {
-                        suggestionsHtml += `
-                            <li class="list-group-item">
-                                <div class="suggestion-header">
-                                    <strong>${suggestion.name}</strong>
-                                    <span class="badge bg-danger">${suggestion.resourceType.toUpperCase()}</span>
-                                </div>
-                                <p>${suggestion.description}</p>
-                                <div class="suggestion-actions">
-                                    <strong>Recommended Actions:</strong>
-                                    <ul>
-                                        ${suggestion.suggestions.map(s => `<li>${s}</li>`).join('')}
-                                    </ul>
-                                </div>
-                                <button class="btn btn-sm btn-primary apply-optimization" data-server="${serverId}" data-optimization="${suggestion.id}">Apply Optimization</button>
-                            </li>
-                        `;
-                    }
-                    
-                    suggestionsHtml += '</ul>';
-                    suggestionsHtml += '</div>';
-                }
-                
-                // Render medium priority suggestions
-                if (mediumPriority.length > 0) {
-                    suggestionsHtml += '<div class="suggestions-group mt-3">';
-                    suggestionsHtml += '<h5><span class="badge bg-warning text-dark">Warnings</span></h5>';
-                    suggestionsHtml += '<ul class="list-group">';
-                    
-                    for (const suggestion of mediumPriority) {
-                        suggestionsHtml += `
-                            <li class="list-group-item">
-                                <div class="suggestion-header">
-                                    <strong>${suggestion.name}</strong>
-                                    <span class="badge bg-warning text-dark">${suggestion.resourceType.toUpperCase()}</span>
-                                </div>
-                                <p>${suggestion.description}</p>
-                                <div class="suggestion-actions">
-                                    <strong>Recommended Actions:</strong>
-                                    <ul>
-                                        ${suggestion.suggestions.map(s => `<li>${s}</li>`).join('')}
-                                    </ul>
-                                </div>
-                                <button class="btn btn-sm btn-primary apply-optimization" data-server="${serverId}" data-optimization="${suggestion.id}">Apply Optimization</button>
-                            </li>
-                        `;
-                    }
-                    
-                    suggestionsHtml += '</ul>';
-                    suggestionsHtml += '</div>';
-                }
-                
-                // Render low priority suggestions
-                if (lowPriority.length > 0) {
-                    suggestionsHtml += '<div class="suggestions-group mt-3">';
-                    suggestionsHtml += '<h5><span class="badge bg-info text-dark">Recommendations</span></h5>';
-                    suggestionsHtml += '<ul class="list-group">';
-                    
-                    for (const suggestion of lowPriority) {
-                        suggestionsHtml += `
-                            <li class="list-group-item">
-                                <div class="suggestion-header">
-                                    <strong>${suggestion.name}</strong>
-                                    <span class="badge bg-info text-dark">${suggestion.resourceType.toUpperCase()}</span>
-                                </div>
-                                <p>${suggestion.description}</p>
-                                <div class="suggestion-actions">
-                                    <strong>Recommended Actions:</strong>
-                                    <ul>
-                                        ${suggestion.suggestions.map(s => `<li>${s}</li>`).join('')}
-                                    </ul>
-                                </div>
-                                <button class="btn btn-sm btn-primary apply-optimization" data-server="${serverId}" data-optimization="${suggestion.id}">Apply Optimization</button>
-                            </li>
-                        `;
-                    }
-                    
-                    suggestionsHtml += '</ul>';
-                    suggestionsHtml += '</div>';
-                }
+                // Render each group
+                suggestionsHtml += this._renderSuggestionGroupHTML({ title: 'Critical Issues', suggestions: highPriority, badgeClass: 'bg-danger', badgeTextClass: 'text-white' }, serverId);
+                suggestionsHtml += this._renderSuggestionGroupHTML({ title: 'Warnings', suggestions: mediumPriority, badgeClass: 'bg-warning', badgeTextClass: 'text-dark' }, serverId);
+                suggestionsHtml += this._renderSuggestionGroupHTML({ title: 'Recommendations', suggestions: lowPriority, badgeClass: 'bg-info', badgeTextClass: 'text-dark' }, serverId);
             }
             
             // Set container HTML
@@ -632,6 +572,55 @@ class PerformanceMonitor {
             logger.error(`Error rendering optimization suggestions for server ${serverId}:`, error);
             return false;
         }
+    }
+    
+    /**
+     * Renders the HTML for a single group of optimization suggestions.
+     * @param {object} groupConfig - Configuration for the suggestion group.
+     * @param {string} groupConfig.title - The title for the suggestion group.
+     * @param {Array} groupConfig.suggestions - An array of suggestion objects for this group.
+     * @param {string} groupConfig.badgeClass - The CSS class for the group badge.
+     * @param {string} [groupConfig.badgeTextClass=''] - Additional CSS class for badge text.
+     * @param {string} serverId - The ID of the server these suggestions apply to.
+     * @returns {string} HTML string for the suggestion group.
+     * @private
+     */
+    _renderSuggestionGroupHTML(groupConfig, serverId) {
+        const { title, suggestions, badgeClass, badgeTextClass = '' } = groupConfig;
+        
+        if (!suggestions || suggestions.length === 0) {
+            return '';
+        }
+        
+        let groupHtml = `<div class="suggestions-group mt-3">`; // mt-3 for spacing between groups
+        groupHtml += `<h5><span class="badge ${badgeClass} ${badgeTextClass}">${title}</span></h5>`;
+        groupHtml += '<ul class="list-group">';
+        
+        for (const suggestion of suggestions) {
+            const actionsHtml = Array.isArray(suggestion.suggestions) 
+                ? suggestion.suggestions.map(s => `<li>${s}</li>`).join('') 
+                : '';
+            const resourceBadgeClass = badgeClass; // Use group badge color for resource for consistency
+            const resourceBadgeTextClass = badgeTextClass;
+            
+            groupHtml += `
+                <li class="list-group-item">
+                    <div class="suggestion-header">
+                        <strong>${suggestion.name || 'Unnamed Suggestion'}</strong>
+                        <span class="badge ${resourceBadgeClass} ${resourceBadgeTextClass}">${(suggestion.resourceType || 'General').toUpperCase()}</span>
+                    </div>
+                    <p>${suggestion.description || 'No description available.'}</p>
+                    <div class="suggestion-actions">
+                        <strong>Recommended Actions:</strong>
+                        <ul>${actionsHtml}</ul>
+                    </div>
+                    <button class="btn btn-sm btn-primary apply-optimization" data-server="${serverId}" data-optimization="${suggestion.id}">Apply Optimization</button>
+                </li>
+            `;
+        }
+        
+        groupHtml += '</ul></div>';
+        return groupHtml;
     }
     
     /**
@@ -738,6 +727,245 @@ class PerformanceMonitor {
     }
     
     /**
+     * Checks if the required data (resources and thresholds) for status calculation is available.
+     * @param {object|null|undefined} resources - The resource data object.
+     * @param {object|null|undefined} thresholds - The threshold data object.
+     * @param {string} serverId - The ID of the server (for logging).
+     * @returns {boolean} True if both resources and thresholds are valid objects, false otherwise.
+     * @private
+     */
+    _hasRequiredStatusData(resources, thresholds, serverId) {
+        const hasData = !!resources && !!thresholds; // Explicitly check both are truthy
+        if (!hasData) {
+            logger.warn(`Cannot determine overall status for ${serverId}: Missing resources or thresholds.`);
+        }
+        return hasData;
+    }
+
+    /**
+     * Determines the overall status of a server based on its resource usage against thresholds.
+     * Assumes performanceOptimizer is available via this.performanceOptimizer
+     * @param {string} serverId - The ID of the server.
+     * @returns {{text: string, class: string}} Object with the highest severity status text and CSS class.
+     */
+    getServerOverallStatus(serverId) {
+        try {
+            const resources = this.resourceMonitor?.getResources(serverId);
+            const thresholds = this.performanceOptimizer?.getThresholds();
+
+            // Validate required data first
+            if (!this._hasRequiredStatusData(resources, thresholds, serverId)) {
+                return { text: 'Unknown', class: 'status-unknown' };
+            }
+
+            // Get status for each resource type
+            const statusArray = [
+                this._getCpuStatus(resources.cpu),
+                this._getMemoryStatus(resources.memory),
+                this._getDiskStatus(resources.disk),
+                this._getNetworkStatus(resources.network)
+            ];
+
+            // Determine the highest severity status
+            let overallStatus = this._getHighestSeverityStatus(statusArray);
+
+            return overallStatus;
+
+        } catch (error) {
+            logger.error(`Error getting overall status for server ${serverId}:`, error);
+            return { text: 'Error', class: 'status-unknown' }; // Return error status
+        }
+    }
+
+    /**
+     * Gets the status for CPU usage
+     * @param {number|null} cpuUsage - CPU usage percentage
+     * @returns {{text: string, class: string}} Status object
+     * @private
+     */
+    _getCpuStatus(cpuUsage) {
+        return this._getResourceStatusInfo(cpuUsage, 'cpu');
+    }
+
+    /**
+     * Gets the status for memory usage
+     * @param {number|null} memoryUsage - Memory usage percentage
+     * @returns {{text: string, class: string}} Status object
+     * @private
+     */
+    _getMemoryStatus(memoryUsage) {
+        return this._getResourceStatusInfo(memoryUsage, 'memory');
+    }
+
+    /**
+     * Gets the status for network usage
+     * @param {number|null} networkUsage - Network usage percentage
+     * @returns {{text: string, class: string}} Status object
+     * @private
+     */
+    _getNetworkStatus(networkUsage) {
+        return this._getResourceStatusInfo(networkUsage, 'network');
+    }
+
+    /**
+     * Gets the status for disk usage, handling multiple disks if present
+     * @param {Object|Array|number|null} diskData - Disk usage data (could be percentage or object with multiple disks)
+     * @returns {{text: string, class: string}} Status object
+     * @private
+     */
+    _getDiskStatus(diskData) {
+        // Handle case where diskData is null or undefined
+        if (diskData === null || typeof diskData === 'undefined') {
+            return { text: 'N/A', class: 'status-unknown' };
+        }
+
+        // Handle case where diskData is a simple percentage
+        if (typeof diskData === 'number') {
+            return this._getResourceStatusInfo(diskData, 'disk');
+        }
+
+        // Handle case where diskData is an array of disk objects
+        if (Array.isArray(diskData)) {
+            const diskStatuses = diskData.map(disk => 
+                this._getResourceStatusInfo(disk.usage, 'disk')
+            );
+            return this._getHighestSeverityStatus(diskStatuses);
+        }
+
+        // Handle case where diskData is an object with multiple disks
+        if (typeof diskData === 'object') {
+            const diskStatuses = Object.values(diskData).map(usage => 
+                this._getResourceStatusInfo(usage, 'disk')
+            );
+            return this._getHighestSeverityStatus(diskStatuses);
+        }
+
+        // Default fallback
+        return { text: 'Unknown', class: 'status-unknown' };
+    }
+
+    /**
+     * Converts a status class to a numeric severity level.
+     * @param {string} statusClass - The CSS status class.
+     * @returns {number} Severity level (2: Critical, 1: Warning, 0: Good, -1: Unknown/NA).
+     * @private
+     */
+    _getSeverityLevel(statusClass) {
+        if (statusClass === 'status-critical') return SEVERITY_LEVELS.CRITICAL;
+        if (statusClass === 'status-warning') return SEVERITY_LEVELS.WARNING;
+        // Handle potential combined classes like 'status-warning text-dark'
+        if (statusClass.includes('status-warning')) return SEVERITY_LEVELS.WARNING;
+        if (statusClass === 'status-unknown') return SEVERITY_LEVELS.UNKNOWN;
+        return SEVERITY_LEVELS.GOOD; // Default to Good
+    }
+
+    /**
+     * Determines the highest severity status from an array of status objects.
+     * @param {Array<{text: string, class: string}>} statusArray - Array of status objects.
+     * @returns {{text: string, class: string}} The highest severity status.
+     * @private
+     */
+    _getHighestSeverityStatus(statusArray) {
+        // Handle empty or invalid array
+        if (!statusArray || statusArray.length === 0) {
+            return { text: 'Unknown', class: 'status-unknown' };
+        }
+
+        // Start with the first status
+        let highestStatus = statusArray[0];
+        let highestSeverity = this._getSeverityLevel(statusArray[0].class);
+
+        // Check each status
+        for (let i = 1; i < statusArray.length; i++) {
+            const currentStatus = statusArray[i];
+            const currentSeverity = this._getSeverityLevel(currentStatus.class);
+
+            // Critical is highest priority - return immediately
+            if (currentSeverity === SEVERITY_LEVELS.CRITICAL) {
+                return currentStatus;
+            }
+
+            // Update if this status has higher severity
+            if (this._isHigherSeverity(currentSeverity, highestSeverity)) {
+                highestStatus = currentStatus;
+                highestSeverity = currentSeverity;
+            }
+        }
+
+        // Adjust text for warning to include dark text class if needed by CSS
+        if (highestStatus.class === 'status-warning') {
+            highestStatus.class += ' text-dark';
+        }
+
+        return highestStatus;
+    }
+    
+    /**
+     * Determines if a severity level is higher than another
+     * @param {number} currentSeverity - Current severity level being checked
+     * @param {number} highestSeverity - Current highest severity level
+     * @returns {boolean} True if currentSeverity is higher
+     * @private
+     */
+    _isHigherSeverity(currentSeverity, highestSeverity) {
+        return (
+            currentSeverity > highestSeverity ||
+            (currentSeverity === SEVERITY_LEVELS.UNKNOWN && highestSeverity === SEVERITY_LEVELS.GOOD)
+        );
+    }
+    
+    /**
+     * Determines the status level and corresponding text/class based on value and thresholds.
+     * Assumes performanceOptimizer is available via this.performanceOptimizer
+     * @param {number} value - The resource value to check.
+     * @param {string} resourceType - The type of resource (e.g., 'cpu').
+     * @returns {{text: string, class: string}} Object with status text and CSS class.
+     * @private
+     */
+    _getResourceStatusInfo(value, resourceType) {
+        // 1. Check for invalid value
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return { text: 'N/A', class: 'status-unknown' };
+        }
+
+        // 2. Get thresholds
+        const thresholds = this.performanceOptimizer?.getThresholds()?.[resourceType];
+        if (!thresholds) {
+            logger.warn(`Thresholds not defined for resource type: ${resourceType}`);
+            return { text: 'Unknown', class: 'status-unknown' };
+        }
+
+        // 3. Determine status based on thresholds using the helper
+        return this._getStatusFromThresholds(value, thresholds);
+    }
+
+    /**
+     * Determines the status level based on a value and its high/medium thresholds.
+     * @param {number} value - The resource value.
+     * @param {object} thresholds - Object containing high and medium thresholds.
+     * @returns {{text: string, class: string}}
+     * @private
+     */
+    _getStatusFromThresholds(value, thresholds) {
+        if (value > thresholds.high) return { text: 'Critical', class: 'status-critical' };
+        if (value > thresholds.medium) return { text: 'Warning', class: 'status-warning' };
+        return { text: 'Good', class: 'status-good' };
+    }
+    
+    /**
+     * Get status text for a resource based on value and thresholds
+     * @param {number} value - Resource value
+     * @param {string} resourceType - Resource type
+     * @returns {string} Status text
+     */
+    getStatusText(value, resourceType) {
+        // Use the helper to get the status info object
+        const statusInfo = this._getResourceStatusInfo(value, resourceType);
+        // Return only the text part
+        return statusInfo.text;
+    }
+    
+    /**
      * Get status class for a resource value
      * @param {number} value - Resource value
      * @param {string} resourceType - Resource type
@@ -770,24 +998,6 @@ class PerformanceMonitor {
             return 'bg-warning text-dark';
         } else {
             return 'bg-success';
-        }
-    }
-    
-    /**
-     * Get status text for a resource value
-     * @param {number} value - Resource value
-     * @param {string} resourceType - Resource type
-     * @returns {string} Status text
-     */
-    getStatusText(value, resourceType) {
-        const thresholds = this.performanceOptimizer.getThresholds()[resourceType];
-        
-        if (value > thresholds.high) {
-            return 'Critical';
-        } else if (value > thresholds.medium) {
-            return 'Warning';
-        } else {
-            return 'Good';
         }
     }
     

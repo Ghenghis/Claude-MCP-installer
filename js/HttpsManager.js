@@ -216,6 +216,35 @@ class HttpsManager {
     }
     
     /**
+     * Validates if a server configuration meets HTTPS requirements
+     * @param {string} serverId - Server ID
+     * @param {Object|undefined} config - Server configuration object
+     * @returns {boolean} True if configuration is valid for HTTPS
+     * @private
+     */
+    _isHttpsConfigValid(serverId, config) {
+        // Check if config exists
+        if (!config) {
+            logger.debug(`[HTTPS Manager] No config found for server ${serverId}`);
+            return false;
+        }
+        
+        // Check if HTTPS is enabled
+        if (!config.useHttps) {
+            logger.debug(`[HTTPS Manager] HTTPS not enabled for server ${serverId}`);
+            return false;
+        }
+        
+        // Check if certificate exists
+        if (!config.certificate) {
+            logger.debug(`[HTTPS Manager] Certificate missing for server ${serverId}`);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
      * Create HTTPS server configuration for a Node.js server
      * @param {string} serverId - Server ID
      * @returns {Object|null} HTTPS server configuration
@@ -224,7 +253,8 @@ class HttpsManager {
         try {
             const config = this.serverConfigs[serverId];
             
-            if (!config || !config.useHttps || !config.certificate) {
+            // Validate configuration requirements for HTTPS
+            if (!this._isHttpsConfigValid(serverId, config)) {
                 return null;
             }
             

@@ -288,6 +288,41 @@ class ResourceMonitor {
     }
     
     /**
+     * Applies time range filtering to resource history entries
+     * @param {Array} history - Resource history entries
+     * @param {Object} options - Filter options with optional startTime and endTime
+     * @returns {Array} Filtered history entries
+     * @private
+     */
+    _filterHistoryByTimeRange(history, options) {
+        return history.filter(entry => {
+            if (options.startTime && entry.timestamp < options.startTime) {
+                return false;
+            }
+            
+            if (options.endTime && entry.timestamp > options.endTime) {
+                return false;
+            }
+            
+            return true;
+        });
+    }
+
+    /**
+     * Applies limit filtering to resource history entries
+     * @param {Array} history - Resource history entries
+     * @param {number} limit - Maximum number of entries to return
+     * @returns {Array} Limited history entries
+     * @private
+     */
+    _limitHistoryEntries(history, limit) {
+        if (limit && limit < history.length) {
+            return history.slice(history.length - limit);
+        }
+        return history;
+    }
+
+    /**
      * Get resource history for a server
      * @param {string} serverId - Server ID
      * @param {Object} options - Options for filtering history
@@ -298,29 +333,22 @@ class ResourceMonitor {
             // Get resource history
             const history = this.resourceHistory[serverId] || [];
             
+            // Apply filters based on options
+            let filteredHistory = history;
+            
             // Apply time range filter if specified
             if (options.startTime || options.endTime) {
-                return history.filter(entry => {
-                    if (options.startTime && entry.timestamp < options.startTime) {
-                        return false;
-                    }
-                    
-                    if (options.endTime && entry.timestamp > options.endTime) {
-                        return false;
-                    }
-                    
-                    return true;
-                });
+                filteredHistory = this._filterHistoryByTimeRange(filteredHistory, options);
             }
             
             // Apply limit if specified
-            if (options.limit && options.limit < history.length) {
-                return history.slice(history.length - options.limit);
+            if (options.limit) {
+                filteredHistory = this._limitHistoryEntries(filteredHistory, options.limit);
             }
             
-            return history;
+            return filteredHistory;
         } catch (error) {
-            console.error(`Error getting resource history for server ${serverId}:`, error);
+            logger.error(`Error getting resource history for server ${serverId}:`, error);
             return [];
         }
     }

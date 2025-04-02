@@ -23,9 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
         window.DockerManager.initialize();
     }
     
-    // Initialize backup manager
-    if (window.backupManager) {
-        window.backupManager.initialize();
+    // Initialize AI installer loader
+    if (window.AiInstallerLoader) {
+        window.AiInstallerLoader.loadAiInstallerModules();
     }
     
     // Initialize server updater
@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add server tab event listeners
     addServerTabEventListeners();
+    
+    // Add AI mode toggle listener
+    addAiModeToggleListener();
 });
 
 /**
@@ -61,6 +64,29 @@ function addServerTabEventListeners() {
             switchServerTab(this, tabId);
         });
     });
+}
+
+/**
+ * Add event listener for AI mode toggle
+ */
+function addAiModeToggleListener() {
+    const aiModeToggle = document.getElementById('aiModeToggle');
+    if (aiModeToggle) {
+        aiModeToggle.addEventListener('change', function() {
+            if (window.AiInstaller && typeof window.AiInstaller.toggleAiMode === 'function') {
+                window.AiInstaller.toggleAiMode(this.checked);
+            }
+        });
+        
+        // Set initial state based on localStorage
+        const aiModeEnabled = localStorage.getItem('aiModeEnabled') === 'true';
+        aiModeToggle.checked = aiModeEnabled;
+        
+        // Trigger initial state
+        if (window.AiInstaller && typeof window.AiInstaller.toggleAiMode === 'function') {
+            window.AiInstaller.toggleAiMode(aiModeEnabled);
+        }
+    }
 }
 
 /**
@@ -87,22 +113,36 @@ function switchServerTab(selectedTab, tabId) {
     if (tabContent) {
         tabContent.style.display = 'block';
         
-        // Trigger specific actions for each tab
-        if (tabId === 'servers') {
+        // Handle tab-specific actions
+        handleTabSpecificActions(tabId);
+    }
+}
+
+/**
+ * Handle tab-specific actions when switching tabs
+ * @param {string} tabId - Tab ID
+ */
+function handleTabSpecificActions(tabId) {
+    switch (tabId) {
+        case 'servers':
             // Refresh server list
             if (window.ServerManager && typeof window.ServerManager.refreshServerList === 'function') {
                 window.ServerManager.refreshServerList();
             }
-        } else if (tabId === 'docker') {
+            break;
+            
+        case 'docker':
             // Refresh Docker containers
             if (window.DockerManager && typeof window.DockerManager.refreshContainers === 'function') {
                 window.DockerManager.refreshContainers();
             }
-        } else if (tabId === 'backups') {
-            // Update backup list
-            if (window.BackupUI && typeof window.BackupUI.updateBackupListContainer === 'function') {
-                window.BackupUI.updateBackupListContainer();
+            break;
+            
+        case 'backups':
+            // Update backup list - now handled by BackupEvents system
+            if (window.BackupEvents) {
+                window.BackupEvents.trigger('refreshBackupList', {});
             }
-        }
+            break;
     }
 }

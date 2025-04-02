@@ -583,72 +583,135 @@ class AdvancedConfigManager {
      */
     generateConfigReport(configId) {
         try {
-            // Check if configuration exists
-            if (!this.configs[configId]) {
-                logger.error(`Configuration with ID ${configId} not found`);
-                return null;
+            // Validate and get configuration and template
+            const configAndTemplate = this._getConfigAndTemplate(configId);
+            if (!configAndTemplate) {
+                return null; // Error already logged in helper
             }
             
-            // Get configuration
-            const config = this.configs[configId];
+            const { config, template } = configAndTemplate;
             
-            // Get template
-            const template = this.configTemplateManager.getTemplate(config._template);
-            
-            if (!template) {
-                logger.error(`Template with ID ${config._template} not found`);
-                return null;
-            }
-            
-            // Get validation result
+            // Get validation result and version history
             const validationResult = this.validateConfig(configId);
-            
-            // Get version history
             const versionHistory = this.getVersionHistory(configId);
             
-            // Create report
-            const report = {
-                configId,
-                name: config._name,
-                template: {
-                    id: template.id,
-                    name: template.name,
-                    description: template.description,
-                    version: template.version
-                },
-                validation: validationResult,
-                created: config._created,
-                updated: config._updated,
-                versions: versionHistory.length,
-                latestVersion: versionHistory.length > 0 ? versionHistory[versionHistory.length - 1].version : null,
-                properties: {}
-            };
+            // Create base report
+            const reportContext = { configId, config, template, validationResult, versionHistory };
+            const report = this._createBaseReport(reportContext);
             
             // Add property details from schema
-            if (template.configSchema && template.configSchema.properties) {
-                for (const [propName, propSchema] of Object.entries(template.configSchema.properties)) {
-                    report.properties[propName] = {
-                        description: propSchema.description || '',
-                        required: template.configSchema.required && template.configSchema.required.includes(propName),
-                        type: propSchema.type || 'unknown',
-                        value: config[propName],
-                        default: propSchema.default,
-                        constraints: {}
-                    };
-                    
-                    // Add constraints
-                    for (const constraint of ['minimum', 'maximum', 'minLength', 'maxLength', 'pattern', 'enum']) {
-                        if (propSchema[constraint] !== undefined) {
-                            report.properties[propName].constraints[constraint] = propSchema[constraint];
-                        }
-                    }
-                }
-            }
+            this._addPropertyDetailsToReport(report, config, template);
             
             return report;
         } catch (error) {
             logger.error(`Error generating configuration report for ${configId}:`, error);
             return null;
+        }
+    }
+    
+    /**
+     * Get configuration and its template
+     * @param {string} configId - Configuration ID
+     * @returns {Object|null} Object containing config and template, or null if not found
+     * @private
+     */
+    _getConfigAndTemplate(configId) {
+        // Check if configuration exists
+        const config = this._getConfigOrLogError(configId);
+        if (!config) {
+            return null;
+        }
+        
+        // Get template
+        const template = this.configTemplateManager.getTemplate(config._template);
+        if (!template) {
+            logger.error(`Template with ID ${config._template} not found`);
+            return null;
+        }
+        
+        return { config, template };
+    }
+    
+    /**
+     * Create base report object
+     * @param {Object} context - Context object containing configId, config, template, validationResult, versionHistory
+     * @returns {Object} Base report object
+     * @private
+     */
+    _createBaseReport(context) {
+        const { configId, config, template, validationResult, versionHistory } = context;
+        return {
+            configId,
+            name: config._name,
+            template: {
+                id: template.id,
+                name: template.name,
+                description: template.description,
+                version: template.version
+            },
+            validation: validationResult,
+            created: config._created,
+            updated: config._updated,
+            versions: versionHistory.length,
+            latestVersion: versionHistory.length > 0 ? versionHistory[versionHistory.length - 1].version : null,
+            properties: {}
+        };
+    }
+    
+    /**
+     * Add property details to report
+     * @param {Object} report - Report object to modify
+     * @param {Object} config - Configuration object
+     * @param {Object} template - Template object
+     * @private
+     */
+    _addPropertyDetailsToReport(report, config, template) {
+        if (!template.configSchema || !template.configSchema.properties) {
+            return;
+        }
+        
+        for (const [propName, propSchema] of Object.entries(template.configSchema.properties)) {
+            // Create property entry
+            report.properties[propName] = this._createPropertyEntry(propName, propSchema, config, template);
+            
+            // Add constraints
+            this._addConstraintsToProperty(report.properties[propName], propSchema);
+        }
+    }
+    
+    /**
+     * Create a property entry for the report
+     * @param {string} propName - Property name
+     * @param {Object} propSchema - Property schema
+     * @param {Object} config - Configuration object
+     * @param {Object} template - Template object
+     * @returns {Object} Property entry
+     * @private
+     */
+    _createPropertyEntry(propName, propSchema, config, template) {
+        return {
+            description: propSchema.description || '',
+            required: template.configSchema.required && template.configSchema.required.includes(propName),
+            type: propSchema.type || 'unknown',
+            value: config[propName],
+            default: propSchema.default,
+            constraints: {}
+        };
+    }
+    
+    /**
+     * Add constraints to a property entry
+     * @param {Object} propertyEntry - Property entry to modify
+     * @param {Object} propSchema - Property schema
+     * @private
+     */
+    _addConstraintsToProperty(propertyEntry, propSchema) {
+        const constraints = ['minimum', 'maximum', 'minLength', 'maxLength', 'pattern', 'enum'];
+        
+        for (const constraint of constraints) {
+            if (propSchema[constraint] !== undefined) {
+                propertyEntry.constraints[constraint] = propSchema[constraint];
+            }
         }
     }
     

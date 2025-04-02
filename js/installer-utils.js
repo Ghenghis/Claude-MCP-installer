@@ -1,25 +1,17 @@
 /**
  * Installer Utils - Utility functions for the installer
- * Provides common utility functions used across the installer
+ * This file is maintained for backward compatibility
+ * New code should use the InstallerUtils module directly
  */
+
+import installerUtils from './InstallerUtils.js';
 
 /**
  * Detect the operating system
  * @returns {string} The detected operating system (windows, macos, linux)
  */
 function detectOS() {
-    const platform = navigator.platform.toLowerCase();
-    
-    if (platform.includes('win')) {
-        return 'windows';
-    } else if (platform.includes('mac')) {
-        return 'macos';
-    } else if (platform.includes('linux') || platform.includes('x11')) {
-        return 'linux';
-    } else {
-        // Default to windows if unable to detect
-        return 'windows';
-    }
+    return installerUtils.detectOS();
 }
 
 /**
@@ -28,15 +20,7 @@ function detectOS() {
  * @returns {string} The formatted path
  */
 function formatPath(path) {
-    const os = detectOS();
-    
-    if (os === 'windows') {
-        // Ensure backslashes for Windows
-        return path.replace(/\//g, '\\');
-    } else {
-        // Ensure forward slashes for macOS and Linux
-        return path.replace(/\\/g, '/');
-    }
+    return installerUtils.formatPath(path);
 }
 
 /**
@@ -45,14 +29,7 @@ function formatPath(path) {
  * @returns {string} The generated ID
  */
 function generateRandomId(length = 8) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    
-    return result;
+    return installerUtils.generateRandomId(length);
 }
 
 /**
@@ -61,12 +38,7 @@ function generateRandomId(length = 8) {
  * @returns {boolean} Whether the URL is valid
  */
 function isValidUrl(url) {
-    try {
-        new URL(url);
-        return true;
-    } catch (error) {
-        return false;
-    }
+    return installerUtils.isValidUrl(url);
 }
 
 /**
@@ -75,15 +47,7 @@ function isValidUrl(url) {
  * @returns {string} The escaped string
  */
 function escapeCommandString(str) {
-    const os = detectOS();
-    
-    if (os === 'windows') {
-        // Escape double quotes and special characters for Windows
-        return str.replace(/"/g, '\\"');
-    } else {
-        // Escape single quotes and special characters for macOS and Linux
-        return str.replace(/'/g, "\\'");
-    }
+    return installerUtils.escapeCommandString(str);
 }
 
 /**
@@ -91,13 +55,7 @@ function escapeCommandString(str) {
  * @returns {string} The home directory path
  */
 function getHomeDirPath() {
-    const os = detectOS();
-    
-    if (os === 'windows') {
-        return process.env.USERPROFILE || 'C:\\Users\\Admin';
-    } else {
-        return process.env.HOME || '/home/user';
-    }
+    return installerUtils.getHomeDirPath();
 }
 
 /**
@@ -105,16 +63,7 @@ function getHomeDirPath() {
  * @returns {string} The configuration path
  */
 function getClaudeConfigPath() {
-    const os = detectOS();
-    const homeDir = getHomeDirPath();
-    
-    if (os === 'windows') {
-        return `${homeDir}\\AppData\\Roaming\\Claude\\claude_desktop_config.json`;
-    } else if (os === 'macos') {
-        return `${homeDir}/Library/Application Support/Claude/claude_desktop_config.json`;
-    } else {
-        return `${homeDir}/.config/claude/claude_desktop_config.json`;
-    }
+    return installerUtils.getClaudeConfigPath();
 }
 
 /**
@@ -124,20 +73,7 @@ function getClaudeConfigPath() {
  * @returns {string} The formatted date string
  */
 function formatDate(date, format = 'YYYY-MM-DD HH:mm:ss') {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    
-    return format
-        .replace('YYYY', year)
-        .replace('MM', month)
-        .replace('DD', day)
-        .replace('HH', hours)
-        .replace('mm', minutes)
-        .replace('ss', seconds);
+    return installerUtils.formatDate(date, format);
 }
 
 /**
@@ -147,17 +83,7 @@ function formatDate(date, format = 'YYYY-MM-DD HH:mm:ss') {
  * @returns {Function} The debounced function
  */
 function debounce(func, wait = 300) {
-    let timeout;
-    
-    return function(...args) {
-        const context = this;
-        
-        clearTimeout(timeout);
-        
-        timeout = setTimeout(() => {
-            func.apply(context, args);
-        }, wait);
-    };
+    return installerUtils.debounce(func, wait);
 }
 
 /**
@@ -167,20 +93,7 @@ function debounce(func, wait = 300) {
  * @returns {Function} The throttled function
  */
 function throttle(func, limit = 300) {
-    let inThrottle;
-    
-    return function(...args) {
-        const context = this;
-        
-        if (!inThrottle) {
-            func.apply(context, args);
-            inThrottle = true;
-            
-            setTimeout(() => {
-                inThrottle = false;
-            }, limit);
-        }
-    };
+    return installerUtils.throttle(func, limit);
 }
 
 /**
@@ -189,7 +102,7 @@ function throttle(func, limit = 300) {
  * @returns {Object} The cloned object
  */
 function deepClone(obj) {
-    return JSON.parse(JSON.stringify(obj));
+    return installerUtils.deepClone(obj);
 }
 
 /**
@@ -198,7 +111,7 @@ function deepClone(obj) {
  * @returns {boolean} Whether the value is null or undefined
  */
 function isNullOrUndefined(value) {
-    return value === null || value === undefined;
+    return installerUtils.isNullOrUndefined(value);
 }
 
 /**
@@ -207,7 +120,7 @@ function isNullOrUndefined(value) {
  * @returns {boolean} Whether the value is an empty string
  */
 function isEmptyString(value) {
-    return typeof value === 'string' && value.trim() === '';
+    return installerUtils.isEmptyString(value);
 }
 
 /**
@@ -216,7 +129,7 @@ function isEmptyString(value) {
  * @returns {boolean} Whether the value is an empty array
  */
 function isEmptyArray(value) {
-    return Array.isArray(value) && value.length === 0;
+    return installerUtils.isEmptyArray(value);
 }
 
 /**
@@ -225,7 +138,7 @@ function isEmptyArray(value) {
  * @returns {boolean} Whether the value is an empty object
  */
 function isEmptyObject(value) {
-    return typeof value === 'object' && !Array.isArray(value) && value !== null && Object.keys(value).length === 0;
+    return installerUtils.isEmptyObject(value);
 }
 
 /**
@@ -234,27 +147,7 @@ function isEmptyObject(value) {
  * @returns {boolean} Whether the value is empty
  */
 function isEmpty(value) {
-    // Check for null or undefined
-    if (isNullOrUndefined(value)) {
-        return true;
-    }
-    
-    // Check for empty string
-    if (isEmptyString(value)) {
-        return true;
-    }
-    
-    // Check for empty array
-    if (isEmptyArray(value)) {
-        return true;
-    }
-    
-    // Check for empty object
-    if (isEmptyObject(value)) {
-        return true;
-    }
-    
-    return false;
+    return installerUtils.isEmpty(value);
 }
 
 // Export functions for use in other modules
@@ -270,5 +163,9 @@ window.InstallerUtils = {
     debounce,
     throttle,
     deepClone,
+    isNullOrUndefined,
+    isEmptyString,
+    isEmptyArray,
+    isEmptyObject,
     isEmpty
 };
