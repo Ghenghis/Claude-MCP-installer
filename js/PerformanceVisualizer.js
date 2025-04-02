@@ -43,17 +43,10 @@ class PerformanceVisualizer {
      */
     createResourceChart(containerId, serverId, resourceType, options = {}) {
         try {
-            const container = document.getElementById(containerId);
-            
-            if (!container) {
-                console.error(`Container element ${containerId} not found`);
+            const canvas = this._setupCanvas(containerId, serverId, resourceType);
+            if (!canvas) {
                 return null;
             }
-            
-            // Create canvas element
-            const canvas = document.createElement('canvas');
-            canvas.id = `chart-${serverId}-${resourceType}`;
-            container.appendChild(canvas);
             
             // Get resource history
             const history = resourceMonitor.getResourceHistory(serverId, options);
@@ -61,54 +54,39 @@ class PerformanceVisualizer {
             // Prepare chart data
             const labels = history.map(entry => {
                 const date = new Date(entry.timestamp);
-                return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
             });
             
             const data = history.map(entry => entry.resources[resourceType]);
             
             // Create chart
             const ctx = canvas.getContext('2d');
-            const chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: `${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)} Usage (%)`,
-                        data,
-                        backgroundColor: this.chartColors[resourceType],
-                        borderColor: this.chartColors[resourceType],
-                        borderWidth: 1,
-                        fill: false,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Usage (%)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            }
+            const chart = this._createChartInstance(ctx, 'line', { labels, datasets: [{ label: `${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)} Usage (%)`, data, backgroundColor: this.chartColors[resourceType], borderColor: this.chartColors[resourceType], borderWidth: 1, fill: false, tension: 0.4 }] }, {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Usage (%)'
                         }
                     },
-                    plugins: {
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        },
-                        legend: {
-                            position: 'top'
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
                         }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    legend: {
+                        position: 'top'
                     }
                 }
             });
@@ -133,104 +111,21 @@ class PerformanceVisualizer {
      */
     createCombinedResourceChart(containerId, serverId, options = {}) {
         try {
-            const container = document.getElementById(containerId);
-            
-            if (!container) {
-                console.error(`Container element ${containerId} not found`);
+            const canvas = this._setupCanvas(containerId, serverId, 'combined');
+            if (!canvas) {
                 return null;
             }
-            
-            // Create canvas element
-            const canvas = document.createElement('canvas');
-            canvas.id = `chart-${serverId}-combined`;
-            container.appendChild(canvas);
             
             // Get resource history
             const history = resourceMonitor.getResourceHistory(serverId, options);
             
-            // Prepare chart data
-            const labels = history.map(entry => {
-                const date = new Date(entry.timestamp);
-                return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-            });
-            
-            const datasets = [
-                {
-                    label: 'CPU Usage (%)',
-                    data: history.map(entry => entry.resources.cpu),
-                    backgroundColor: this.chartColors.cpu,
-                    borderColor: this.chartColors.cpu,
-                    borderWidth: 1,
-                    fill: false,
-                    tension: 0.4
-                },
-                {
-                    label: 'Memory Usage (%)',
-                    data: history.map(entry => entry.resources.memory),
-                    backgroundColor: this.chartColors.memory,
-                    borderColor: this.chartColors.memory,
-                    borderWidth: 1,
-                    fill: false,
-                    tension: 0.4
-                },
-                {
-                    label: 'Disk Usage (%)',
-                    data: history.map(entry => entry.resources.disk),
-                    backgroundColor: this.chartColors.disk,
-                    borderColor: this.chartColors.disk,
-                    borderWidth: 1,
-                    fill: false,
-                    tension: 0.4
-                },
-                {
-                    label: 'Network Usage (%)',
-                    data: history.map(entry => entry.resources.network),
-                    backgroundColor: this.chartColors.network,
-                    borderColor: this.chartColors.network,
-                    borderWidth: 1,
-                    fill: false,
-                    tension: 0.4
-                }
-            ];
+            // Prepare data and options
+            const chartData = this._prepareCombinedChartData(history);
+            const chartOptions = this._getCombinedChartOptions();
             
             // Create chart
             const ctx = canvas.getContext('2d');
-            const chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Usage (%)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        },
-                        legend: {
-                            position: 'top'
-                        }
-                    }
-                }
-            });
+            const chart = this._createChartInstance(ctx, 'line', chartData, chartOptions);
             
             // Store chart reference
             const chartId = `${serverId}-combined`;
@@ -244,33 +139,184 @@ class PerformanceVisualizer {
     }
     
     /**
+     * Sets up the canvas element for a chart.
+     * @param {string} containerId - The ID of the container element.
+     * @param {string} serverId - The server ID.
+     * @param {string} chartName - Specific name for the chart (e.g., 'cpu', 'combined').
+     * @returns {HTMLCanvasElement | null} The canvas element or null if container not found.
+     * @private
+     */
+    _setupCanvas(containerId, serverId, chartName) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error(`Container element ${containerId} not found`);
+            return null;
+        }
+        
+        // Remove existing canvas if it exists
+        const existingCanvas = document.getElementById(`chart-${serverId}-${chartName}`);
+        if (existingCanvas) {
+            existingCanvas.remove();
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.id = `chart-${serverId}-${chartName}`;
+        container.appendChild(canvas);
+        return canvas;
+    }
+    
+    /**
+     * Prepares the labels and datasets for the combined resource chart.
+     * @param {Array<Object>} history - The resource history data.
+     * @returns {{labels: Array<string>, datasets: Array<Object>}} Chart data object.
+     * @private
+     */
+    _prepareCombinedChartData(history) {
+        const labels = history.map(entry => {
+            const date = new Date(entry.timestamp);
+            // Format time as HH:MM
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        });
+        
+        const resourceTypes = ['cpu', 'memory', 'disk', 'network'];
+        const datasets = resourceTypes.map(type => ({
+            label: `${type.charAt(0).toUpperCase() + type.slice(1)} Usage (%)`,
+            data: history.map(entry => entry.resources[type] ?? 0), // Use nullish coalescing for safety
+            backgroundColor: this.chartColors[type],
+            borderColor: this.chartColors[type],
+            borderWidth: 1,
+            fill: false,
+            tension: 0.4 // Smoothes the line
+        }));
+        
+        return { labels, datasets };
+    }
+    
+    /**
+     * Creates a new Chart.js instance.
+     * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+     * @param {string} chartType - The type of chart (e.g., 'line').
+     * @param {Object} data - The chart data (labels, datasets).
+     * @param {Object} options - The chart options.
+     * @returns {Chart} The Chart.js instance.
+     * @private
+     */
+    _createChartInstance(ctx, chartType, data, options) {
+        return new Chart(ctx, {
+            type: chartType,
+            data: data,
+            options: options
+        });
+    }
+    
+    /**
+     * Gets the Chart.js options specific to the combined resource chart.
+     * @returns {Object} Chart options object.
+     * @private
+     */
+    _getCombinedChartOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Usage (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'index', // Show tooltips for all datasets at that index
+                    intersect: false
+                },
+                legend: {
+                    position: 'top'
+                }
+            }
+        };
+    }
+    
+    /**
+     * Removes the oldest data point from a chart if the number of data points exceeds the maximum.
+     * @param {Chart} chart - The Chart.js instance.
+     * @param {number} [maxPoints=20] - The maximum number of data points to keep.
+     * @private
+     */
+    _shiftChartDataIfNeeded(chart, maxPoints = 20) {
+        if (chart.data.labels.length > maxPoints) {
+            chart.data.labels.shift();
+            chart.data.datasets.forEach(dataset => {
+                dataset.data.shift();
+            });
+        }
+    }
+    
+    /**
+     * Creates a formatted time label for chart data points
+     * @returns {string} Formatted time label (HH:MM)
+     * @private
+     */
+    _createTimeLabel() {
+        const date = new Date();
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+    
+    /**
+     * Adds a data point to a chart and updates it
+     * @param {Object} chart - The chart to update
+     * @param {string} label - The label for the data point
+     * @param {number|Array<number>} data - The data value(s) to add
+     * @private
+     */
+    _addDataPointAndUpdate(chart, label, data) {
+        if (!chart) return;
+        
+        // Add label
+        chart.data.labels.push(label);
+        
+        // Add data (handle both single values and arrays)
+        if (Array.isArray(data)) {
+            for (let i = 0; i < data.length; i++) {
+                chart.data.datasets[i].data.push(data[i]);
+            }
+        } else {
+            chart.data.datasets[0].data.push(data);
+        }
+        
+        // Maintain chart size limit
+        this._shiftChartDataIfNeeded(chart);
+        
+        // Update chart
+        chart.update();
+    }
+    
+    /**
      * Update charts for a server
      * @param {string} serverId - Server ID
      * @param {Object} resources - Server resources
      */
     updateCharts(serverId, resources) {
         try {
+            // Create a time label once for all charts
+            const timeLabel = this._createTimeLabel();
+            
             // Update individual resource charts
             for (const resourceType of ['cpu', 'memory', 'disk', 'network']) {
                 const chartId = `${serverId}-${resourceType}`;
                 const chart = this.charts[chartId];
                 
                 if (chart) {
-                    // Add new data point
-                    const date = new Date();
-                    const label = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-                    
-                    chart.data.labels.push(label);
-                    chart.data.datasets[0].data.push(resources[resourceType]);
-                    
-                    // Remove oldest data point if too many
-                    if (chart.data.labels.length > 20) {
-                        chart.data.labels.shift();
-                        chart.data.datasets[0].data.shift();
-                    }
-                    
-                    // Update chart
-                    chart.update();
+                    this._addDataPointAndUpdate(chart, timeLabel, resources[resourceType]);
                 }
             }
             
@@ -279,26 +325,10 @@ class PerformanceVisualizer {
             const combinedChart = this.charts[combinedChartId];
             
             if (combinedChart) {
-                // Add new data point
-                const date = new Date();
-                const label = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-                
-                combinedChart.data.labels.push(label);
-                
-                for (let i = 0; i < 4; i++) {
-                    const resourceType = ['cpu', 'memory', 'disk', 'network'][i];
-                    combinedChart.data.datasets[i].data.push(resources[resourceType]);
-                    
-                    // Remove oldest data point if too many
-                    if (combinedChart.data.labels.length > 20) {
-                        combinedChart.data.labels.shift();
-                        combinedChart.data.datasets[i].data.shift();
-                    }
-                }
-                
-                // Update chart
-                combinedChart.update();
+                const resourceValues = ['cpu', 'memory', 'disk', 'network'].map(type => resources[type]);
+                this._addDataPointAndUpdate(combinedChart, timeLabel, resourceValues);
             }
+            
         } catch (error) {
             console.error(`Error updating charts for server ${serverId}:`, error);
         }
@@ -361,43 +391,45 @@ class PerformanceVisualizer {
             // Add resource usage summary
             summary += 'Resource usage: ';
             
-            if (stats.cpu.avg > 80) {
-                summary += 'CPU (Critical), ';
-            } else if (stats.cpu.avg > 50) {
-                summary += 'CPU (Warning), ';
-            } else {
-                summary += 'CPU (Good), ';
-            }
-            
-            if (stats.memory.avg > 85) {
-                summary += 'Memory (Critical), ';
-            } else if (stats.memory.avg > 60) {
-                summary += 'Memory (Warning), ';
-            } else {
-                summary += 'Memory (Good), ';
-            }
-            
-            if (stats.disk.avg > 90) {
-                summary += 'Disk (Critical), ';
-            } else if (stats.disk.avg > 70) {
-                summary += 'Disk (Warning), ';
-            } else {
-                summary += 'Disk (Good), ';
-            }
-            
-            if (stats.network.avg > 80) {
-                summary += 'Network (Critical)';
-            } else if (stats.network.avg > 50) {
-                summary += 'Network (Warning)';
-            } else {
-                summary += 'Network (Good)';
-            }
-            
-            return summary;
+            summary += this._getResourceStatusSummary('cpu', stats.cpu.avg);
+            summary += this._getResourceStatusSummary('memory', stats.memory.avg);
+            summary += this._getResourceStatusSummary('disk', stats.disk.avg);
+            summary += this._getResourceStatusSummary('network', stats.network.avg);
+ 
+            return summary.trim(); // Trim trailing space if network was good
         } catch (error) {
             console.error('Error generating report summary:', error);
             return 'Error generating report summary';
         }
+    }
+    
+    /**
+     * Gets the summary string for a single resource's status based on its average value.
+     * @param {string} resourceType - The type of resource (e.g., 'cpu', 'memory').
+     * @param {number} avgValue - The average value for the resource.
+     * @returns {string} A summary string fragment (e.g., "CPU (Critical), ").
+     * @private
+     */
+    _getResourceStatusSummary(resourceType, avgValue) {
+        const capitalizedType = resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
+        let status = 'Good';
+        let thresholds = { critical: 80, warning: 50 }; // Default (CPU, Network)
+        
+        if (resourceType === 'memory') {
+            thresholds = { critical: 85, warning: 60 };
+        } else if (resourceType === 'disk') {
+            thresholds = { critical: 90, warning: 70 };
+        }
+        
+        if (avgValue > thresholds.critical) {
+            status = 'Critical';
+        } else if (avgValue > thresholds.warning) {
+            status = 'Warning';
+        }
+        
+        // Add comma and space for all but the last one (network)
+        const suffix = (resourceType !== 'network') ? ', ' : ''; 
+        return `${capitalizedType} (${status})${suffix}`;
     }
     
     /**
@@ -431,60 +463,18 @@ class PerformanceVisualizer {
             container.innerHTML = '';
             
             // Create report HTML
+            const headerHtml = this._buildReportHeaderHTML(serverId, report.timestamp);
+            const summaryHtml = this._buildReportSummaryHTML(report.summary);
+            const statsTableHtml = this._buildStatsTableHTML(report.statistics);
+            const suggestionsHtml = this.renderSuggestions(report.suggestions);
+            
             const reportHtml = `
                 <div class="performance-report">
-                    <h2>Performance Report</h2>
-                    <p><strong>Server:</strong> ${serverId}</p>
-                    <p><strong>Generated:</strong> ${new Date(report.timestamp).toLocaleString()}</p>
-                    
-                    <h3>Summary</h3>
-                    <p>${report.summary}</p>
-                    
-                    <h3>Resource Statistics</h3>
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Resource</th>
-                                <th>Min (%)</th>
-                                <th>Max (%)</th>
-                                <th>Avg (%)</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>CPU</td>
-                                <td>${report.statistics.cpu.min}</td>
-                                <td>${report.statistics.cpu.max}</td>
-                                <td>${report.statistics.cpu.avg}</td>
-                                <td class="${this.getStatusClass(report.statistics.cpu.avg, 'cpu')}">${this.getStatusText(report.statistics.cpu.avg, 'cpu')}</td>
-                            </tr>
-                            <tr>
-                                <td>Memory</td>
-                                <td>${report.statistics.memory.min}</td>
-                                <td>${report.statistics.memory.max}</td>
-                                <td>${report.statistics.memory.avg}</td>
-                                <td class="${this.getStatusClass(report.statistics.memory.avg, 'memory')}">${this.getStatusText(report.statistics.memory.avg, 'memory')}</td>
-                            </tr>
-                            <tr>
-                                <td>Disk</td>
-                                <td>${report.statistics.disk.min}</td>
-                                <td>${report.statistics.disk.max}</td>
-                                <td>${report.statistics.disk.avg}</td>
-                                <td class="${this.getStatusClass(report.statistics.disk.avg, 'disk')}">${this.getStatusText(report.statistics.disk.avg, 'disk')}</td>
-                            </tr>
-                            <tr>
-                                <td>Network</td>
-                                <td>${report.statistics.network.min}</td>
-                                <td>${report.statistics.network.max}</td>
-                                <td>${report.statistics.network.avg}</td>
-                                <td class="${this.getStatusClass(report.statistics.network.avg, 'network')}">${this.getStatusText(report.statistics.network.avg, 'network')}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
+                    ${headerHtml}
+                    ${summaryHtml}
+                    ${statsTableHtml}
                     <h3>Optimization Suggestions</h3>
-                    ${this.renderSuggestions(report.suggestions)}
+                    ${suggestionsHtml}
                 </div>
             `;
             
@@ -496,6 +486,86 @@ class PerformanceVisualizer {
             console.error(`Error rendering performance report for server ${serverId}:`, error);
             return false;
         }
+    }
+    
+    /**
+     * Builds the HTML for the report header.
+     * @param {string} serverId - The server ID.
+     * @param {number} timestamp - The timestamp when the report was generated.
+     * @returns {string} HTML string for the report header.
+     * @private
+     */
+    _buildReportHeaderHTML(serverId, timestamp) {
+        return `
+            <h2>Performance Report</h2>
+            <p><strong>Server:</strong> ${serverId}</p>
+            <p><strong>Generated:</strong> ${new Date(timestamp).toLocaleString()}</p>
+        `;
+    }
+    
+    /**
+     * Builds the HTML for the report summary section.
+     * @param {string} summary - The summary text.
+     * @returns {string} HTML string for the summary.
+     * @private
+     */
+    _buildReportSummaryHTML(summary) {
+        return `
+            <h3>Summary</h3>
+            <p>${summary || 'No summary available.'}</p>
+        `;
+    }
+    
+    /**
+     * Builds the HTML for the resource statistics table.
+     * @param {Object} statistics - The statistics object (e.g., { cpu: { min, max, avg }, ... }).
+     * @returns {string} HTML string for the statistics table.
+     * @private
+     */
+    _buildStatsTableHTML(statistics) {
+        if (!statistics) {
+            return '<p>Statistics not available.</p>';
+        }
+        
+        let tableHtml = `
+            <h3>Resource Statistics</h3>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Min (%)</th>
+                        <th>Max (%)</th>
+                        <th>Avg (%)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        for (const resourceType of ['cpu', 'memory', 'disk', 'network']) {
+            const stats = statistics[resourceType] || { min: 'N/A', max: 'N/A', avg: 'N/A' };
+            const avg = typeof stats.avg === 'number' ? stats.avg.toFixed(2) : 'N/A'; // Format average
+            const statusInfo = this._getResourceStatusInfo(stats.avg, resourceType);
+            const statusClass = statusInfo.class;
+            const statusText = statusInfo.text;
+            
+            tableHtml += `
+                <tr>
+                    <td>${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}</td>
+                    <td>${stats.min}</td>
+                    <td>${stats.max}</td>
+                    <td>${avg}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                </tr>
+            `;
+        }
+        
+        tableHtml += `
+                </tbody>
+            </table>
+        `;
+        
+        return tableHtml;
     }
     
     /**
@@ -513,75 +583,128 @@ class PerformanceVisualizer {
         const mediumPriority = suggestions.filter(s => s.priority === 'medium');
         const lowPriority = suggestions.filter(s => s.priority === 'low');
         
-        let html = '';
-        
-        // Render high priority suggestions
-        if (highPriority.length > 0) {
-            html += '<div class="suggestions-group high-priority">';
-            html += '<h4>Critical Issues</h4>';
-            html += '<ul>';
-            
-            for (const suggestion of highPriority) {
-                html += `
-                    <li>
-                        <h5>${suggestion.name}</h5>
-                        <p>${suggestion.description}</p>
-                        <ul class="suggestion-actions">
-                            ${suggestion.suggestions.map(s => `<li>${s}</li>`).join('')}
-                        </ul>
-                    </li>
-                `;
-            }
-            
-            html += '</ul>';
-            html += '</div>';
-        }
-        
-        // Render medium priority suggestions
-        if (mediumPriority.length > 0) {
-            html += '<div class="suggestions-group medium-priority">';
-            html += '<h4>Warnings</h4>';
-            html += '<ul>';
-            
-            for (const suggestion of mediumPriority) {
-                html += `
-                    <li>
-                        <h5>${suggestion.name}</h5>
-                        <p>${suggestion.description}</p>
-                        <ul class="suggestion-actions">
-                            ${suggestion.suggestions.map(s => `<li>${s}</li>`).join('')}
-                        </ul>
-                    </li>
-                `;
-            }
-            
-            html += '</ul>';
-            html += '</div>';
-        }
-        
-        // Render low priority suggestions
-        if (lowPriority.length > 0) {
-            html += '<div class="suggestions-group low-priority">';
-            html += '<h4>Recommendations</h4>';
-            html += '<ul>';
-            
-            for (const suggestion of lowPriority) {
-                html += `
-                    <li>
-                        <h5>${suggestion.name}</h5>
-                        <p>${suggestion.description}</p>
-                        <ul class="suggestion-actions">
-                            ${suggestion.suggestions.map(s => `<li>${s}</li>`).join('')}
-                        </ul>
-                    </li>
-                `;
-            }
-            
-            html += '</ul>';
-            html += '</div>';
-        }
+        // Use the helper to render each group
+        let html = this._renderSuggestionGroup('Critical Issues', highPriority, 'high-priority');
+        html += this._renderSuggestionGroup('Warnings', mediumPriority, 'medium-priority');
+        html += this._renderSuggestionGroup('Recommendations', lowPriority, 'low-priority');
         
         return html;
+    }
+    
+    /**
+     * Renders a group of suggestions with a specific title and CSS class.
+     * @param {string} title - The title for the suggestion group (e.g., 'Critical Issues').
+     * @param {Array<Object>} suggestions - Array of suggestion objects for this group.
+     * @param {string} cssClass - The CSS class to apply to the group div (e.g., 'high-priority').
+     * @returns {string} HTML string for the suggestion group.
+     * @private
+     */
+    _renderSuggestionGroup(title, suggestions, cssClass) {
+        if (!suggestions || suggestions.length === 0) {
+            return '';
+        }
+        
+        let groupHtml = `<div class="suggestions-group ${cssClass}">`;
+        groupHtml += `<h4>${title}</h4>`;
+        groupHtml += '<ul>';
+        
+        for (const suggestion of suggestions) {
+            // Ensure suggestion.suggestions is an array before mapping
+            const actionsHtml = Array.isArray(suggestion.suggestions) 
+                ? suggestion.suggestions.map(s => `<li>${s}</li>`).join('') 
+                : '';
+            
+            groupHtml += `
+                <li>
+                    <h5>${suggestion.name || 'Unnamed Suggestion'}</h5>
+                    <p>${suggestion.description || 'No description.'}</p>
+                    <ul class="suggestion-actions">
+                        ${actionsHtml}
+                    </ul>
+                </li>
+            `;
+        }
+        
+        groupHtml += '</ul>';
+        groupHtml += '</div>';
+        return groupHtml;
+    }
+    
+    /**
+     * Validates if a numeric resource value is usable for status determination
+     * @param {number} value - The resource value to validate
+     * @returns {boolean} True if the value is valid and usable, false otherwise
+     * @private
+     */
+    _isValidResourceValue(value) {
+        return value !== null && typeof value !== 'undefined' && !isNaN(value);
+    }
+
+    /**
+     * Determines the status level and corresponding text/class based on value and thresholds.
+     * @param {number} value - The resource value to check.
+     * @param {string} resourceType - The type of resource (e.g., 'cpu').
+     * @returns {{text: string, class: string}} Object containing status text and CSS class.
+     * @private
+     */
+    _getResourceStatusInfo(value, resourceType) {
+        // First validate the value
+        if (!this._isValidResourceValue(value)) {
+            return { text: 'N/A', class: 'status-unknown' };
+        }
+        
+        const thresholds = this._getThresholdsForResource(resourceType);
+        
+        if (value > thresholds.high) return { text: 'Critical', class: 'status-critical' };
+        if (value > thresholds.medium) return { text: 'Warning', class: 'status-warning' };
+        return { text: 'Good', class: 'status-good' };
+    }
+    
+    /**
+     * Gets the performance thresholds for a specific resource type.
+     * @param {string} resourceType - The type of resource (e.g., 'cpu', 'memory').
+     * @returns {{high: number, medium: number}} Object containing high and medium thresholds.
+     * @private
+     */
+    _getThresholdsForResource(resourceType) {
+        // Default thresholds (CPU, Network)
+        let thresholds = { high: 80, medium: 50 }; 
+        
+        // Use specific thresholds if available from performanceOptimizer
+        // Needs review if performanceOptimizer isn't global/member.
+        const optimizerThresholds = performanceOptimizer?.getThresholds?.[resourceType];
+        if (optimizerThresholds) {
+            return optimizerThresholds; 
+        }
+        
+        // Fallback to hardcoded defaults if optimizer doesn't provide them
+        if (resourceType === 'memory') {
+            thresholds = { high: 85, warning: 60 };
+        } else if (resourceType === 'disk') {
+            thresholds = { high: 90, warning: 70 };
+        }
+        
+        return thresholds; 
+    }
+    
+    /**
+     * Determines the status level and corresponding text/class based on value and thresholds.
+     * @param {number} value - The resource value to check.
+     * @param {string} resourceType - The type of resource (e.g., 'cpu').
+     * @returns {{text: string, class: string}} Object containing status text and CSS class.
+     * @private
+     */
+    _getResourceStatusInfo(value, resourceType) {
+        // First validate the value
+        if (!this._isValidResourceValue(value)) {
+            return { text: 'N/A', class: 'status-unknown' };
+        }
+        
+        const thresholds = this._getThresholdsForResource(resourceType);
+        
+        if (value > thresholds.high) return { text: 'Critical', class: 'status-critical' };
+        if (value > thresholds.medium) return { text: 'Warning', class: 'status-warning' };
+        return { text: 'Good', class: 'status-good' };
     }
     
     /**
@@ -591,15 +714,7 @@ class PerformanceVisualizer {
      * @returns {string} Status class
      */
     getStatusClass(value, resourceType) {
-        const thresholds = performanceOptimizer.getThresholds()[resourceType];
-        
-        if (value > thresholds.high) {
-            return 'status-critical';
-        } else if (value > thresholds.medium) {
-            return 'status-warning';
-        } else {
-            return 'status-good';
-        }
+        return this._getResourceStatusInfo(value, resourceType).class;
     }
     
     /**
@@ -609,15 +724,7 @@ class PerformanceVisualizer {
      * @returns {string} Status text
      */
     getStatusText(value, resourceType) {
-        const thresholds = performanceOptimizer.getThresholds()[resourceType];
-        
-        if (value > thresholds.high) {
-            return 'Critical';
-        } else if (value > thresholds.medium) {
-            return 'Warning';
-        } else {
-            return 'Good';
-        }
+        return this._getResourceStatusInfo(value, resourceType).text;
     }
 }
 
