@@ -66,65 +66,88 @@ class PerformanceOptimizer {
     }
     
     /**
+     * Define a standard optimization rule
+     * @param {string} id - Rule identifier
+     * @param {string} name - Rule name
+     * @param {string} description - Rule description
+     * @param {string} resourceType - Type of resource (cpu, memory, disk, network, general)
+     * @param {Function} condition - Function that determines if rule applies
+     * @param {Array<string>} suggestions - List of optimization suggestions
+     * @param {string} priority - Priority level (high, medium, low)
+     * @private
+     */
+    _defineRule(id, name, description, resourceType, condition, suggestions, priority) {
+        this.addOptimizationRule({
+            id,
+            name,
+            description,
+            resourceType,
+            condition,
+            suggestions,
+            priority
+        });
+    }
+    
+    /**
      * Initialize optimization rules
      */
     initializeOptimizationRules() {
-        // CPU optimization rules
-        this.addOptimizationRule({
-            id: 'cpu-high-usage',
-            name: 'High CPU Usage',
-            description: 'Server is experiencing high CPU usage',
-            resourceType: 'cpu',
-            condition: (value, stats) => value > this.thresholds.cpu.high,
-            suggestions: [
+        // CPU rules
+        this._defineRule(
+            'cpu-high-usage',
+            'High CPU Usage',
+            'Server is experiencing high CPU usage',
+            'cpu',
+            (value, stats) => value > this.thresholds.cpu.high,
+            [
                 'Consider scaling up CPU resources for this server',
                 'Check for CPU-intensive processes that can be optimized',
                 'Implement request throttling to reduce CPU load',
                 'Enable caching to reduce computational overhead'
             ],
-            priority: 'high'
-        });
+            'high'
+        );
         
-        this.addOptimizationRule({
-            id: 'cpu-spikes',
-            name: 'CPU Usage Spikes',
-            description: 'Server is experiencing CPU usage spikes',
-            resourceType: 'cpu',
-            condition: (value, stats) => (
+        this._defineRule(
+            'cpu-spikes',
+            'CPU Usage Spikes',
+            'Server is experiencing CPU usage spikes',
+            'cpu',
+            (value, stats) => (
                 value > this.thresholds.cpu.medium && 
                 stats.max - stats.min > 40
             ),
-            suggestions: [
+            [
                 'Implement request queuing to smooth out CPU usage',
                 'Check for scheduled tasks that might be causing spikes',
                 'Consider distributing workload more evenly',
                 'Optimize database queries that might be causing CPU spikes'
             ],
-            priority: 'medium'
-        });
+            'medium'
+        );
         
-        // Memory optimization rules
-        this.addOptimizationRule({
-            id: 'memory-high-usage',
-            name: 'High Memory Usage',
-            description: 'Server is experiencing high memory usage',
-            resourceType: 'memory',
-            condition: (value, stats) => value > this.thresholds.memory.high,
-            suggestions: [
+        // Memory rules
+        this._defineRule(
+            'memory-high-usage',
+            'High Memory Usage',
+            'Server is experiencing high memory usage',
+            'memory',
+            (value, stats) => value > this.thresholds.memory.high,
+            [
                 'Consider scaling up memory resources for this server',
                 'Check for memory leaks in the application',
                 'Implement memory caching with proper TTL values',
                 'Optimize large data processing operations'
             ],
-            priority: 'high'
-        });
+            'high'
+        );
         
-        this.addOptimizationRule({
-            id: 'memory-growth',
-            name: 'Memory Usage Growth',
-            description: 'Server memory usage is steadily increasing',
-            resourceType: 'memory',
-            condition: (value, stats, history) => {
+        this._defineRule(
+            'memory-growth',
+            'Memory Usage Growth',
+            'Server memory usage is steadily increasing',
+            'memory',
+            (value, stats, history) => {
                 if (history.length < 10) return false;
                 
                 // Check if memory usage has been consistently increasing
@@ -139,65 +162,67 @@ class PerformanceOptimizer {
                 
                 return increasingCount >= 7; // 70% of recent measurements show increase
             },
-            suggestions: [
+            [
                 'Check for memory leaks in the application',
                 'Implement proper cleanup of resources',
                 'Consider implementing a memory limit for the server',
                 'Restart the server periodically to release memory'
             ],
-            priority: 'high'
-        });
+            'high'
+        );
         
-        // Disk optimization rules
-        this.addOptimizationRule({
-            id: 'disk-high-usage',
-            name: 'High Disk Usage',
-            description: 'Server is experiencing high disk usage',
-            resourceType: 'disk',
-            condition: (value, stats) => value > this.thresholds.disk.high,
-            suggestions: [
+        // Disk rules
+        this._defineRule(
+            'disk-high-usage',
+            'High Disk Usage',
+            'Server is experiencing high disk usage',
+            'disk',
+            (value, stats) => value > this.thresholds.disk.high,
+            [
                 'Consider scaling up disk resources for this server',
                 'Implement log rotation to reduce disk usage',
                 'Clean up temporary files regularly',
                 'Move static assets to a CDN or separate storage'
             ],
-            priority: 'medium'
-        });
+            'medium'
+        );
         
-        // Network optimization rules
-        this.addOptimizationRule({
-            id: 'network-high-usage',
-            name: 'High Network Usage',
-            description: 'Server is experiencing high network usage',
-            resourceType: 'network',
-            condition: (value, stats) => value > this.thresholds.network.high,
-            suggestions: [
+        // Network rules
+        this._defineRule(
+            'network-high-usage',
+            'High Network Usage',
+            'Server is experiencing high network usage',
+            'network',
+            (value, stats) => value > this.thresholds.network.high,
+            [
                 'Implement data compression for network transfers',
                 'Use HTTP/2 to reduce connection overhead',
                 'Optimize API responses to reduce payload size',
                 'Implement caching to reduce network requests'
             ],
-            priority: 'medium'
-        });
+            'medium'
+        );
         
-        // General optimization rules
-        this.addOptimizationRule({
-            id: 'overall-high-usage',
-            name: 'Overall High Resource Usage',
-            description: 'Server is experiencing high usage across multiple resources',
-            resourceType: 'general',
-            condition: (value, stats, history, resources) => (
+        // General rules
+        this._defineRule(
+            'overall-high-usage',
+            'Overall High Resource Usage',
+            'Server is experiencing high usage across multiple resources',
+            'general',
+            (value, stats, history, resources) => (
                 resources.cpu > this.thresholds.cpu.medium &&
-                resources.memory > this.thresholds.memory.medium
+                resources.memory > this.thresholds.memory.medium &&
+                (resources.disk > this.thresholds.disk.medium || 
+                 resources.network > this.thresholds.network.medium)
             ),
-            suggestions: [
-                'Consider scaling up server resources',
-                'Implement load balancing across multiple servers',
-                'Optimize critical code paths for better performance',
-                'Consider microservices architecture to distribute load'
+            [
+                'Consider scaling up resources for this server',
+                'Optimize application code to reduce resource usage',
+                'Implement load balancing to distribute workload',
+                'Consider using a CDN for static content'
             ],
-            priority: 'high'
-        });
+            'high'
+        );
     }
     
     /**
