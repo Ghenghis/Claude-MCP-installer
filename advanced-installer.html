@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/mcp-search.css">
 </head>
 <body>
     <div class="container">
@@ -24,6 +25,7 @@
                 <div class="tab" data-tab="manage">Server Management</div>
                 <div class="tab" data-tab="logs">Logs & Diagnostics</div>
                 <div class="tab" data-tab="ai">AI Integration</div>
+                <div class="tab" data-tab="search">Search</div>
             </div>
             
             <div class="tab-content active" id="install-tab">
@@ -476,6 +478,62 @@
                     <i class="fas fa-save"></i> Save AI Configuration
                 </button>
             </div>
+            
+            <div class="tab-content" id="search-tab">
+                <h2><i class="fas fa-search"></i> Search for MCP Servers on GitHub</h2>
+                
+                <div class="search-layout">
+                    <!-- Search Controls and Results Area -->
+                    <div class="search-main">
+                        <div class="search-controls">
+                            <input type="text" id="githubSearchQuery" placeholder="Enter keywords (e.g., file server, llm)">
+                            <button id="githubSearchBtn"><i class="fas fa-search"></i> Search GitHub</button>
+                            <button id="aiEnhanceSearchBtn" class="tooltip" data-tooltip="Use AI to improve search results (Future Feature)" disabled>
+                                <i class="fas fa-magic"></i> Enhance Search
+                            </button>
+                        </div>
+                        <div class="search-filters">
+                            <label for="githubSort">Sort by:</label>
+                            <select id="githubSort">
+                                <option value="best-match" selected>Best Match</option>
+                                <option value="stars">Stars</option>
+                                <option value="forks">Forks</option>
+                                <option value="help-wanted-issues">Help Wanted Issues</option>
+                                <option value="updated">Recently Updated</option>
+                            </select>
+                            <!-- Add more filters later if needed -->
+                        </div>
+                        <div id="githubSearchResults" class="search-results-area">
+                            <p>Enter keywords and click search to find MCP servers on GitHub.</p>
+                            <!-- Search results will be loaded here -->
+                            <div class="loading-indicator" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i> Searching...
+                            </div>
+                             <div class="error-message" style="display: none;">
+                                <i class="fas fa-exclamation-triangle"></i> Error fetching results. Check console or try again.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Installation Queue Sidebar -->
+                    <div class="search-queue-sidebar">
+                        <h3><i class="fas fa-list-ol"></i> Installation Queue</h3>
+                        <div id="installationQueueList" class="queue-list">
+                            <!-- Queue items will be added here -->
+                            <p class="empty-queue-message">Search results can be added here.</p>
+                        </div>
+                        <div class="queue-controls">
+                             <label class="switch">
+                                <input type="checkbox" id="aiModeToggle">
+                                <span class="slider round"></span>
+                            </label>
+                            <label for="aiModeToggle" class="toggle-label">AI Mode (Experimental)</label>
+                            <button id="installQueueBtn" class="install-button" disabled><i class="fas fa-download"></i> Install Queue</button>
+                            <button id="clearQueueBtn" class="clear-button" disabled><i class="fas fa-trash"></i> Clear Queue</button>
+                        </div>
+                    </div>
+                </div> 
+            </div>
         </div>
         
         <div class="footer">
@@ -495,6 +553,7 @@
     <script src="js/server-controller.js"></script>
     <script src="js/logger.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/mcp-search.js"></script>
     <script src="js/main.js"></script>
     <script src="js/installer-ui.js"></script>
     

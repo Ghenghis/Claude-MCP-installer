@@ -1,1058 +1,697 @@
 /**
- * Installer UI - Handles UI interactions for the installer
+ * Installer UI - Main entry point for the installer UI
+ * Coordinates between various modular components
  */
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize UI elements
-    initUI();
-    
-    // Add event listeners
-    addEventListeners();
-    
-    // Show welcome message
-    showWelcomeMessage();
-});
+
+// Import dependencies
+// These would be proper imports in a module system
+// For now, we're assuming these are loaded via script tags
 
 /**
- * Initialize UI elements
+ * Initialize the installer UI
  */
-function initUI() {
-    // Set default installation path based on OS
-    const installPathInput = document.getElementById('installPath');
-    if (installPathInput) {
-        installPathInput.placeholder = detectOS() === 'windows' ? 
-            'C:\\Program Files\\Claude Desktop MCP' : 
-            '/opt/claude-desktop-mcp';
+function initInstallerUI() {
+    // Initialize UI components
+    if (window.InstallerUICore && window.InstallerUICore.initUI) {
+        window.InstallerUICore.initUI();
     }
     
-    // Select first template by default
-    const firstTemplate = document.querySelector('.template-card');
-    if (firstTemplate) {
-        firstTemplate.classList.add('selected');
-    }
+    // Set up event listeners
+    setupEventListeners();
     
-    // Select first method by default
-    const firstMethod = document.querySelector('.method-option');
-    if (firstMethod) {
-        firstMethod.classList.add('selected');
+    // Check system requirements
+    checkSystemRequirements();
+    
+    // Log initialization
+    if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+        window.InstallerUIUtils.logMessage('Installer UI initialized', 'info');
+    } else {
+        console.log('Installer UI initialized');
     }
 }
 
 /**
- * Add event listeners to UI elements
+ * Set up event listeners for UI interactions
  */
-function addEventListeners() {
-    // Mode toggle
-    const modeToggle = document.getElementById('modeToggle');
-    if (modeToggle) {
-        modeToggle.addEventListener('change', function() {
-            toggleAdvancedMode(this.checked);
-        });
-    }
+function setupEventListeners() {
+    // Set up installation method selection
+    setupInstallationMethodSelection();
     
-    // Template selection
-    const templateCards = document.querySelectorAll('.template-card');
-    templateCards.forEach(card => {
-        card.addEventListener('click', function() {
-            selectTemplate(this);
+    // Set up template selection
+    setupTemplateSelection();
+    
+    // Set up installation path selection
+    setupInstallationPathSelection();
+    
+    // Set up installation button
+    setupInstallButton();
+    
+    // Set up URL installation
+    setupUrlInstallation();
+    
+    // Set up advanced options
+    setupAdvancedOptions();
+}
+
+/**
+ * Set up installation method selection
+ */
+function setupInstallationMethodSelection() {
+    const methodRadios = document.querySelectorAll('input[name="installMethod"]');
+    
+    methodRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Update UI based on selected method
+            updateUIForMethod(this.value);
+            
+            // Log selection
+            if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+                window.InstallerUIUtils.logMessage(`Installation method selected: ${this.value}`, 'info');
+            } else {
+                console.log(`Installation method selected: ${this.value}`);
+            }
         });
     });
+}
+
+/**
+ * Update UI based on selected installation method
+ * @param {string} methodId - The selected installation method ID
+ */
+function updateUIForMethod(methodId) {
+    // Get UI elements
+    const dockerOptions = document.getElementById('dockerOptions');
+    const localOptions = document.getElementById('localOptions');
+    const npxOptions = document.getElementById('npxOptions');
     
-    // Method selection
-    const methodOptions = document.querySelectorAll('.method-option');
-    methodOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            selectMethod(this);
-        });
-    });
+    // Hide all options first
+    dockerOptions.style.display = 'none';
+    localOptions.style.display = 'none';
+    npxOptions.style.display = 'none';
     
-    // Tab switching
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            switchTab(this);
-        });
-    });
-    
-    // Generate secret button
-    const generateSecretBtn = document.getElementById('generateSecret');
-    if (generateSecretBtn) {
-        generateSecretBtn.addEventListener('click', function() {
-            generateSecret();
-        });
+    // Show options for selected method
+    switch (methodId) {
+        case 'docker':
+            dockerOptions.style.display = 'block';
+            break;
+        case 'local':
+            localOptions.style.display = 'block';
+            break;
+        case 'npx':
+            npxOptions.style.display = 'block';
+            break;
     }
+}
+
+/**
+ * Set up template selection
+ */
+function setupTemplateSelection() {
+    const templateSelect = document.getElementById('templateSelect');
     
-    // Install button
-    const installBtn = document.getElementById('installBtn');
-    if (installBtn) {
-        installBtn.addEventListener('click', function() {
-            startInstallation();
-        });
-    }
-    
-    // JSON Tools buttons
-    const backupJsonBtn = document.getElementById('backupJsonBtn');
-    if (backupJsonBtn) {
-        backupJsonBtn.addEventListener('click', function() {
-            backupJsonConfiguration();
-        });
-    }
-    
-    const fixJsonBtn = document.getElementById('fixJsonBtn');
-    if (fixJsonBtn) {
-        fixJsonBtn.addEventListener('click', function() {
-            fixJsonConfiguration();
-        });
-    }
-    
-    const verifyJsonBtn = document.getElementById('verifyJsonBtn');
-    if (verifyJsonBtn) {
-        verifyJsonBtn.addEventListener('click', function() {
-            verifyJsonConfiguration();
-        });
-    }
-    
-    // Template search input
-    const templateSearchInput = document.getElementById('templateSearch');
-    if (templateSearchInput) {
-        templateSearchInput.addEventListener('input', function() {
-            filterTemplates(this.value);
+    if (templateSelect) {
+        templateSelect.addEventListener('change', function() {
+            // Get selected template
+            const templateId = this.value;
+            
+            // Update UI based on selected template
+            updateUIForTemplate(templateId);
+            
+            // Log selection
+            if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+                window.InstallerUIUtils.logMessage(`Template selected: ${templateId}`, 'info');
+            } else {
+                console.log(`Template selected: ${templateId}`);
+            }
         });
     }
 }
 
 /**
- * Filter template cards based on search query
- * @param {string} query - The search query
+ * Update UI based on selected template
+ * @param {string} templateId - The selected template ID
  */
-function filterTemplates(query) {
-    const normalizedQuery = query.toLowerCase().trim();
-    const templateCards = document.querySelectorAll('.template-card');
+function updateUIForTemplate(templateId) {
+    // Get template details
+    const templateDetails = getTemplateDetails(templateId);
     
-    templateCards.forEach(card => {
-        const titleElement = card.querySelector('h3') || card.querySelector('.template-title');
-        const descElement = card.querySelector('p') || card.querySelector('.template-desc');
+    // Update UI with template details
+    if (templateDetails) {
+        const templateDescription = document.getElementById('templateDescription');
+        const templateRequirements = document.getElementById('templateRequirements');
         
-        const title = titleElement ? titleElement.textContent.toLowerCase() : '';
-        const description = descElement ? descElement.textContent.toLowerCase() : '';
+        if (templateDescription) {
+            templateDescription.textContent = templateDetails.description;
+        }
         
-        const isMatch = title.includes(normalizedQuery) || description.includes(normalizedQuery);
-        
-        card.style.display = isMatch ? '' : 'none';
-    });
-}
-
-/**
- * Toggle advanced mode
- * @param {boolean} isAdvanced - Whether advanced mode is enabled
- */
-function toggleAdvancedMode(isAdvanced) {
-    const advancedOptions = document.getElementById('advancedOptions');
-    if (advancedOptions) {
-        advancedOptions.style.display = isAdvanced ? 'block' : 'none';
-    }
-    
-    logMessage(isAdvanced ? 'Advanced mode enabled' : 'Switched to normal mode', 'info');
-}
-
-/**
- * Select a template
- * @param {Element} templateCard - The selected template card
- */
-function selectTemplate(templateCard) {
-    // Remove selected class from all templates
-    document.querySelectorAll('.template-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    
-    // Add selected class to clicked template
-    templateCard.classList.add('selected');
-    
-    // Log selection
-    const templateName = templateCard.querySelector('h3')?.textContent || 
-                         templateCard.querySelector('.template-title')?.textContent || 
-                         'Unknown template';
-    logMessage(`Selected template: ${templateName}`, 'info');
-}
-
-/**
- * Select a method
- * @param {Element} methodOption - The selected method option
- */
-function selectMethod(methodOption) {
-    // Remove selected class from all methods
-    document.querySelectorAll('.method-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    
-    // Add selected class to clicked method
-    methodOption.classList.add('selected');
-    
-    // Log selection
-    const methodName = methodOption.querySelector('h3')?.textContent || 'Unknown method';
-    logMessage(`Selected installation method: ${methodName}`, 'info');
-}
-
-/**
- * Switch tab
- * @param {Element} tabButton - The clicked tab button
- */
-function switchTab(tabButton) {
-    const tabId = tabButton.getAttribute('data-tab');
-    if (!tabId) return;
-    
-    // Remove active class from all tabs and contents
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    // Add active class to clicked tab and corresponding content
-    tabButton.classList.add('active');
-    const tabContent = document.getElementById(`${tabId}-tab`);
-    if (tabContent) {
-        tabContent.classList.add('active');
+        if (templateRequirements) {
+            templateRequirements.textContent = templateDetails.requirements.join(', ');
+        }
     }
 }
 
 /**
- * Generate a random secret
+ * Get template details by ID
+ * @param {string} templateId - The template ID
+ * @returns {Object|null} Template details or null if not found
  */
-function generateSecret() {
-    const jwtSecretInput = document.getElementById('jwtSecret');
-    if (!jwtSecretInput) return;
-    
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
-    let secret = '';
-    for (let i = 0; i < 32; i++) {
-        secret += characters.charAt(Math.floor(Math.random() * characters.length));
+function getTemplateDetails(templateId) {
+    // Get templates from the template module
+    if (window.InstallerUITemplates && window.InstallerUITemplates.getTemplates) {
+        const templates = window.InstallerUITemplates.getTemplates();
+        return templates.find(template => template.id === templateId) || null;
     }
     
-    jwtSecretInput.value = secret;
-    logMessage('Generated JWT secret', 'success');
+    // Fallback to a simple template list
+    const templates = [
+        {
+            id: 'basic',
+            name: 'Basic MCP Server',
+            description: 'A basic MCP server with essential functionality',
+            requirements: ['Node.js 14+']
+        },
+        {
+            id: 'full',
+            name: 'Full MCP Server Suite',
+            description: 'Complete suite of MCP servers with all available functionality',
+            requirements: ['Node.js 14+', '4GB RAM', '2GB Disk Space']
+        },
+        {
+            id: 'minimal',
+            name: 'Minimal MCP Server',
+            description: 'Lightweight MCP server with minimal dependencies',
+            requirements: ['Node.js 14+', '1GB RAM']
+        }
+    ];
+    
+    return templates.find(template => template.id === templateId) || null;
+}
+
+/**
+ * Set up installation path selection
+ */
+function setupInstallationPathSelection() {
+    const pathInput = document.getElementById('installPath');
+    const browseButton = document.getElementById('browsePath');
+    
+    if (browseButton) {
+        browseButton.addEventListener('click', function() {
+            // Open file browser if available
+            if (typeof window.electronAPI !== 'undefined' && window.electronAPI.openDirectoryPicker) {
+                window.electronAPI.openDirectoryPicker()
+                    .then(path => {
+                        if (path && pathInput) {
+                            pathInput.value = path;
+                            
+                            // Log selection
+                            if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+                                window.InstallerUIUtils.logMessage(`Installation path selected: ${path}`, 'info');
+                            } else {
+                                console.log(`Installation path selected: ${path}`);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+                            window.InstallerUIUtils.logMessage(`Error selecting path: ${error.message}`, 'error');
+                        } else {
+                            console.error(`Error selecting path: ${error.message}`);
+                        }
+                    });
+            } else {
+                // Fallback for browsers without file system access
+                alert('Directory selection is not available in this environment.');
+            }
+        });
+    }
+}
+
+/**
+ * Set up installation button
+ */
+function setupInstallButton() {
+    const installButton = document.getElementById('installButton');
+    
+    if (installButton) {
+        installButton.addEventListener('click', function() {
+            // Get installation parameters
+            const params = getInstallationParameters();
+            
+            // Validate parameters
+            if (validateInstallationParameters(params)) {
+                // Start installation
+                startInstallation(params);
+            }
+        });
+    }
+}
+
+/**
+ * Get installation parameters from UI
+ * @returns {Object} Installation parameters
+ */
+function getInstallationParameters() {
+    // Get selected installation method
+    const methodRadios = document.querySelectorAll('input[name="installMethod"]');
+    let methodId = 'npx'; // Default
+    
+    methodRadios.forEach(radio => {
+        if (radio.checked) {
+            methodId = radio.value;
+        }
+    });
+    
+    // Get selected template
+    const templateSelect = document.getElementById('templateSelect');
+    const templateId = templateSelect ? templateSelect.value : 'basic';
+    
+    // Get installation path
+    const pathInput = document.getElementById('installPath');
+    const installPath = pathInput ? pathInput.value : '';
+    
+    // Get advanced options
+    const advancedOptions = getAdvancedOptions();
+    
+    return {
+        methodId,
+        templateId,
+        installPath,
+        ...advancedOptions
+    };
+}
+
+/**
+ * Get advanced installation options
+ * @returns {Object} Advanced options
+ */
+function getAdvancedOptions() {
+    const options = {};
+    
+    // Get Docker options if available
+    if (window.InstallerUIDocker && window.InstallerUIDocker.getDockerConfigOptions) {
+        options.docker = window.InstallerUIDocker.getDockerConfigOptions();
+    }
+    
+    // Get other advanced options
+    const portInput = document.getElementById('serverPort');
+    if (portInput) {
+        options.port = portInput.value || '3000';
+    }
+    
+    const debugCheckbox = document.getElementById('enableDebug');
+    if (debugCheckbox) {
+        options.debug = debugCheckbox.checked;
+    }
+    
+    return options;
+}
+
+/**
+ * Validate installation parameters
+ * @param {Object} params - Installation parameters
+ * @returns {boolean} Whether the parameters are valid
+ */
+function validateInstallationParameters(params) {
+    // Check for required parameters
+    if (!params.methodId) {
+        showError('Please select an installation method.');
+        return false;
+    }
+    
+    if (!params.templateId) {
+        showError('Please select a template.');
+        return false;
+    }
+    
+    // Validate installation path
+    if (!params.installPath) {
+        showError('Please specify an installation path.');
+        return false;
+    }
+    
+    // Method-specific validation
+    if (params.methodId === 'docker') {
+        // Check Docker availability
+        if (window.InstallerUIDocker && window.InstallerUIDocker.isDockerAvailable) {
+            if (!window.InstallerUIDocker.isDockerAvailable()) {
+                showError('Docker is not available. Please install Docker or choose a different installation method.');
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Show error message
+ * @param {string} message - Error message
+ */
+function showError(message) {
+    // Show error in UI
+    const errorElement = document.getElementById('errorMessage');
+    
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+    
+    // Log error
+    if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+        window.InstallerUIUtils.logMessage(message, 'error');
+    } else {
+        console.error(message);
+    }
 }
 
 /**
  * Start the installation process
+ * @param {Object} params - Installation parameters
  */
-function startInstallation() {
-    // Get form values
-    const repoUrl = document.getElementById('repoUrl')?.value || 'https://github.com/modelcontextprotocol/servers';
-    const installPath = document.getElementById('installPath')?.value ||
-                        (detectOS() === 'windows' ? 'C:\\Program Files\\Claude Desktop MCP' : '/opt/claude-desktop-mcp');
+function startInstallation(params) {
+    // Show installation UI
+    showInstallationUI();
     
-    // Get selected template
-    const selectedTemplate = document.querySelector('.template-card.selected');
-    const templateName = selectedTemplate?.querySelector('h3')?.textContent ||
-                         selectedTemplate?.querySelector('.template-title')?.textContent ||
-                         'Unknown template';
-    
-    // Get selected method
-    const selectedMethod = document.querySelector('.method-option.selected');
-    const methodName = selectedMethod?.querySelector('h3')?.textContent || 'Unknown method';
-    const methodId = selectedMethod?.dataset.method || 'npx';
-    
-    // Set default repository URL if not provided
-    if (!document.getElementById('repoUrl')?.value) {
-        if (document.getElementById('repoUrl')) {
-            document.getElementById('repoUrl').value = 'https://github.com/modelcontextprotocol/servers';
-        }
-    }
-    
-    // Show progress container
-    const progressContainer = document.getElementById('progressContainer');
-    if (progressContainer) {
-        progressContainer.style.display = 'block';
-    }
-    
-    // Hide install button
-    const installBtn = document.getElementById('installBtn');
-    if (installBtn) {
-        installBtn.style.display = 'none';
-    }
-    
-    
-    // --- Prerequisite Check ---
-    let prerequisiteWarning = null;
-    if (methodId === 'npx') {
-        prerequisiteWarning = 'Ensure Node.js (including npm/npx) is installed and added to your system PATH.';
-    } else if (methodId === 'python') {
-        prerequisiteWarning = 'Ensure Python (including pip) is installed and added to your system PATH.';
-    }
-    
-    if (prerequisiteWarning) {
-        logMessage(`Prerequisite Check for '${methodName}' method:`, 'warning');
-        logMessage(prerequisiteWarning, 'warning');
-        logMessage('Refer to WINDOWS_SETUP.md for installation help.', 'warning');
-        // Add a small delay before proceeding to ensure the message is visible
-        // In a real app, we might pause here or offer a confirmation.
-    }
-    // --- End Prerequisite Check ---
-
-    // Start installation
-    logMessage(`Starting installation of ${templateName} from ${repoUrl}`, 'info');
-    logMessage(`Using method: ${methodName}`, 'info');
-    logMessage(`Installation path: ${installPath}`, 'info');
-    
-    // Simulate installation progress
-    simulateInstallation();
-}
-
-/**
- * Perform the actual installation based on the selected method
- */
-function simulateInstallation() {
-    let progress = 0;
-    const progressBar = document.getElementById('progressBar');
-    const progressPercent = document.getElementById('progressPercent');
-    const progressStatus = document.getElementById('progressStatus');
-    
-    // Get selected method
-    const selectedMethod = document.querySelector('.method-option.selected');
-    const methodId = selectedMethod?.dataset.method || 'npx';
-    
-    // Get repository URL
-    const repoUrl = document.getElementById('repoUrl')?.value || 'https://github.com/modelcontextprotocol/servers';
-    
-    // Get installation path
-    const installPath = document.getElementById('installPath')?.value ||
-                       (detectOS() === 'windows' ? 'C:\\Program Files\\Claude Desktop MCP' : '/opt/claude-desktop-mcp');
-    
-    // Get selected template
-    const selectedTemplate = document.querySelector('.template-card.selected');
-    const templateId = selectedTemplate?.dataset.template || 'basic-api';
-    
-    // Log installation start
-    const timestamp = new Date().toLocaleTimeString();
-    logMessage(`${timestamp} System requirements verified`, 'info');
-    logMessage(`${timestamp} Downloading template: ${templateId}`, 'info');
-    logMessage(`${timestamp} Template downloaded`, 'info');
-    logMessage(`${timestamp} Configuring installation...`, 'info');
-    logMessage(`${timestamp} Configuration complete`, 'info');
-    
-    // Update progress
-    progress = 5;
-    if (progressBar) progressBar.style.width = `${progress}%`;
-    if (progressPercent) progressPercent.textContent = `${progress}%`;
-    if (progressStatus) progressStatus.textContent = 'Preparing installation...';
-    
-    // Installation commands for each method
-    const commands = {
-        npx: `npx @modelcontextprotocol/mcp-installer --repo=${repoUrl} --template=${templateId} --path="${installPath}"`,
-        uv: `uv install @modelcontextprotocol/mcp --repo=${repoUrl} --template=${templateId} --path="${installPath}"`,
-        python: `pip install modelcontextprotocol-mcp --repo=${repoUrl} --template=${templateId} --path="${installPath}"`
-    };
-    
-    // Get the command for the selected method
-    const command = commands[methodId];
-    
-    // Log the command
-    logMessage(`Executing: ${command}`, 'info');
-    
-    // Simulate installation progress
-    const interval = setInterval(() => {
-        progress += 5;
-        
-        if (progressBar) progressBar.style.width = `${progress}%`;
-        if (progressPercent) progressPercent.textContent = `${progress}%`;
-        
-        if (progress === 20) {
-            if (progressStatus) progressStatus.textContent = 'Downloading dependencies...';
-            logMessage('Downloading dependencies...', 'info');
-        } else if (progress === 40) {
-            if (progressStatus) progressStatus.textContent = 'Installing packages...';
-            logMessage('Installing packages...', 'info');
-        } else if (progress === 60) {
-            if (progressStatus) progressStatus.textContent = 'Configuring server...';
-            logMessage('Configuring server...', 'info');
-            
-            // Actually install the MCP servers
-            installMcpServers(methodId);
-            
-            // Update Claude Desktop configuration file
-            updateClaudeConfig(repoUrl, installPath, methodId);
-            
-            // Log configuration file location
-            if (detectOS() === 'windows') {
-                logMessage('Configuration file updated at: C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json', 'info');
-            }
-        } else if (progress === 80) {
-            if (progressStatus) progressStatus.textContent = 'Starting server...';
-            logMessage('Starting server...', 'info');
-        } else if (progress === 90) {
-            if (progressStatus) progressStatus.textContent = 'Verifying configuration...';
-            logMessage('Verifying configuration...', 'info');
-            
-            // Verify the JSON configuration was updated correctly
-            try {
-                const configPath = 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
-                
-                // In a real implementation, this would read the file and verify it
-                // For our simulation, we'll check localStorage
-                const configData = localStorage.getItem('claude_config');
-                if (configData) {
-                    try {
-                        const config = JSON.parse(configData);
-                        
-                        // Check if the newly installed servers are in the config
-                        const hasGithub = config.mcpServers && config.mcpServers.github;
-                        const hasRedis = config.mcpServers && config.mcpServers.redis;
-                        const hasTime = config.mcpServers && config.mcpServers.time;
-                        
-                        if (!hasGithub || !hasRedis || !hasTime) {
-                            logMessage('Configuration verification failed: Missing servers', 'warning');
-                            logMessage('Attempting to fix configuration...', 'info');
-                            
-                            // Add missing servers to configuration
-                            if (!config.mcpServers) {
-                                config.mcpServers = {};
-                            }
-                            
-                            // Add missing servers
-                            const nodePath = 'C:\\Program Files\\nodejs\\node.exe';
-                            const npmModulesPath = 'C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules';
-                            
-                            if (!hasGithub) {
-                                config.mcpServers.github = {
-                                    command: nodePath,
-                                    args: [`${npmModulesPath}\\@modelcontextprotocol\\server-github\\dist\\index.js`],
-                                    env: { DEBUG: '*' }
-                                };
-                            }
-                            
-                            if (!hasRedis) {
-                                config.mcpServers.redis = {
-                                    command: nodePath,
-                                    args: [`${npmModulesPath}\\@modelcontextprotocol\\server-redis\\dist\\index.js`],
-                                    env: { DEBUG: '*' }
-                                };
-                            }
-                            
-                            if (!hasTime) {
-                                config.mcpServers.time = {
-                                    command: nodePath,
-                                    args: [`${npmModulesPath}\\@modelcontextprotocol\\server-time\\dist\\index.js`],
-                                    env: { DEBUG: '*' }
-                                };
-                            }
-                            
-                            // Save the updated configuration
-                            writeClaudeConfig(configPath, config);
-                            logMessage('Configuration fixed successfully', 'success');
-                        } else {
-                            logMessage('Configuration verification successful', 'success');
-                        }
-                    } catch (parseError) {
-                        logMessage(`Configuration verification failed: ${parseError.message}`, 'error');
-                        logMessage('Attempting to fix configuration...', 'info');
-                        fixJsonConfig(configPath);
-                    }
+    // Check system requirements
+    checkSystemRequirements()
+        .then(requirements => {
+            if (requirements.satisfied) {
+                // Start installation process
+                if (window.InstallerUIInstallation && window.InstallerUIInstallation.startInstallation) {
+                    window.InstallerUIInstallation.startInstallation(params);
                 } else {
-                    logMessage('Configuration file not found, creating new configuration', 'warning');
-                    updateClaudeConfig(repoUrl, installPath, methodId);
+                    // Fallback to simulation
+                    simulateInstallation(params);
                 }
-            } catch (error) {
-                logMessage(`Error verifying configuration: ${error.message}`, 'error');
+            } else {
+                // Show requirements not met
+                showRequirementsNotMet(requirements.missing);
             }
-        } else if (progress === 100) {
-            if (progressStatus) progressStatus.textContent = 'Installation complete!';
-            logMessage('Installation complete!', 'success');
-            logMessage(`Successfully installed MCP server using ${methodId}`, 'success');
-            
-            clearInterval(interval);
-            
-            // Show verification container
-            const verificationContainer = document.getElementById('verificationContainer');
-            if (verificationContainer) {
-                setTimeout(() => {
-                    verificationContainer.style.display = 'block';
-                }, 1000);
-            }
-            
-            // Update server status
-            updateServerStatus('running');
-        }
-    }, 500);
+        })
+        .catch(error => {
+            showError(`Error checking system requirements: ${error.message}`);
+        });
 }
 
 /**
- * Backup the JSON configuration file
+ * Show the installation UI
  */
-function backupJsonConfiguration() {
-    try {
-        const configPath = 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
-        const backupPath = backupClaudeConfig(configPath); // backupClaudeConfig already logs to main log
-        
-        if (backupPath) {
-            logJsonMessage(`Configuration backed up to ${backupPath}`, 'success');
-        } else {
-            logJsonMessage('Failed to backup configuration', 'error');
-        }
-    } catch (error) {
-        logJsonMessage(`Error backing up configuration: ${error.message}`, 'error');
+function showInstallationUI() {
+    // Hide setup UI
+    const setupContainer = document.getElementById('setupContainer');
+    if (setupContainer) {
+        setupContainer.style.display = 'none';
+    }
+    
+    // Show installation UI
+    const installationContainer = document.getElementById('installationContainer');
+    if (installationContainer) {
+        installationContainer.style.display = 'block';
     }
 }
 
 /**
- * Fix the JSON configuration file
+ * Show requirements not met message
+ * @param {Array} missingRequirements - List of missing requirements
  */
-function fixJsonConfiguration() {
-    try {
-        const configPath = 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
-        const success = fixJsonConfig(configPath); // fixJsonConfig already logs to main log
-        
-        if (success) {
-            logJsonMessage('JSON configuration file fixed successfully', 'success');
-        } else {
-            logJsonMessage('Failed to fix JSON configuration file', 'error');
-        }
-    } catch (error) {
-        logJsonMessage(`Error fixing JSON configuration: ${error.message}`, 'error');
+function showRequirementsNotMet(missingRequirements) {
+    // Show error
+    showError(`System requirements not met: ${missingRequirements.join(', ')}`);
+    
+    // Show setup UI again
+    const setupContainer = document.getElementById('setupContainer');
+    if (setupContainer) {
+        setupContainer.style.display = 'block';
+    }
+    
+    // Hide installation UI
+    const installationContainer = document.getElementById('installationContainer');
+    if (installationContainer) {
+        installationContainer.style.display = 'none';
     }
 }
 
 /**
- * Verify the JSON configuration file
+ * Check system requirements
+ * @returns {Promise<Object>} Promise resolving to requirements status
  */
-function verifyJsonConfiguration() {
-    try {
-        const configPath = 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
-        
-        // In a real implementation, this would read the file and parse it
-        // For our simulation, we'll use localStorage
-        const configData = localStorage.getItem('claude_config');
-        if (configData) {
-            try {
-                JSON.parse(configData);
-                logJsonMessage('JSON configuration file is valid', 'success');
-            } catch (parseError) {
-                logJsonMessage(`JSON configuration file is invalid: ${parseError.message}`, 'error');
+function checkSystemRequirements() {
+    return new Promise((resolve, reject) => {
+        try {
+            // Log check
+            if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+                window.InstallerUIUtils.logMessage('Checking system requirements...', 'info');
+            } else {
+                console.log('Checking system requirements...');
             }
-        } else {
-            logJsonMessage('JSON configuration file not found', 'warning');
+            
+            // Check Node.js
+            const nodeVersion = checkNodeVersion();
+            
+            // Check disk space
+            const diskSpace = checkDiskSpace();
+            
+            // Check memory
+            const memory = checkMemory();
+            
+            // Check Docker if needed
+            const dockerAvailable = window.InstallerUIDocker && window.InstallerUIDocker.isDockerAvailable ? 
+                window.InstallerUIDocker.isDockerAvailable() : 
+                false;
+            
+            // Determine if requirements are met
+            const missingRequirements = [];
+            
+            if (!nodeVersion.satisfied) {
+                missingRequirements.push(`Node.js ${nodeVersion.required}+`);
+            }
+            
+            if (!diskSpace.satisfied) {
+                missingRequirements.push(`${diskSpace.required}GB disk space`);
+            }
+            
+            if (!memory.satisfied) {
+                missingRequirements.push(`${memory.required}GB RAM`);
+            }
+            
+            // Resolve with requirements status
+            resolve({
+                satisfied: missingRequirements.length === 0,
+                missing: missingRequirements,
+                details: {
+                    nodeVersion,
+                    diskSpace,
+                    memory,
+                    dockerAvailable
+                }
+            });
+        } catch (error) {
+            reject(error);
         }
-    } catch (error) {
-        logJsonMessage(`Error verifying JSON configuration: ${error.message}`, 'error');
+    });
+}
+
+/**
+ * Check Node.js version
+ * @returns {Object} Node.js version check result
+ */
+function checkNodeVersion() {
+    // In a real implementation, this would check the actual Node.js version
+    // For our simulation, we'll assume it's available
+    
+    return {
+        required: '14.0.0',
+        current: '16.0.0',
+        satisfied: true
+    };
+}
+
+/**
+ * Check available disk space
+ * @returns {Object} Disk space check result
+ */
+function checkDiskSpace() {
+    // In a real implementation, this would check the actual disk space
+    // For our simulation, we'll assume it's sufficient
+    
+    return {
+        required: 2,
+        available: 50,
+        satisfied: true
+    };
+}
+
+/**
+ * Check available memory
+ * @returns {Object} Memory check result
+ */
+function checkMemory() {
+    // In a real implementation, this would check the actual memory
+    // For our simulation, we'll assume it's sufficient
+    
+    return {
+        required: 4,
+        available: 8,
+        satisfied: true
+    };
+}
+
+/**
+ * Simulate the installation process
+ * @param {Object} params - Installation parameters
+ */
+function simulateInstallation(params) {
+    // Use the progress module if available
+    if (window.InstallerUIProgress && window.InstallerUIProgress.simulateInstallation) {
+        window.InstallerUIProgress.simulateInstallation(params);
+    } else {
+        // Fallback implementation
+        console.log('Simulating installation with params:', params);
+        alert('Installation simulation not available. Please check the console for details.');
     }
 }
 
 /**
- * Update the Claude Desktop configuration file with new MCP servers
- * @param {string} repoUrl - The GitHub repository URL
- * @param {string} installPath - The installation path
- * @param {string} methodId - The installation method (npx, uv, python)
+ * Set up URL installation
+ */
+function setupUrlInstallation() {
+    const urlInstallButton = document.getElementById('urlInstallButton');
+    const urlInput = document.getElementById('repoUrl');
+    
+    if (urlInstallButton && urlInput) {
+        urlInstallButton.addEventListener('click', function() {
+            const url = urlInput.value.trim();
+            
+            if (url) {
+                // Use the URL module if available
+                if (window.InstallerUIUrl && window.InstallerUIUrl.installFromUrl) {
+                    window.InstallerUIUrl.installFromUrl(url);
+                } else {
+                    // Fallback to alert
+                    alert(`URL installation not available for: ${url}`);
+                }
+            } else {
+                showError('Please enter a repository URL.');
+            }
+        });
+    }
+}
+
+/**
+ * Set up advanced options
+ */
+function setupAdvancedOptions() {
+    const advancedToggle = document.getElementById('advancedToggle');
+    const advancedOptions = document.getElementById('advancedOptions');
+    
+    if (advancedToggle && advancedOptions) {
+        advancedToggle.addEventListener('click', function() {
+            if (advancedOptions.style.display === 'none') {
+                advancedOptions.style.display = 'block';
+                advancedToggle.textContent = 'Hide Advanced Options';
+            } else {
+                advancedOptions.style.display = 'none';
+                advancedToggle.textContent = 'Show Advanced Options';
+            }
+        });
+    }
+}
+
+/**
+ * Update Claude Desktop configuration
+ * @param {string} repoUrl - Repository URL
+ * @param {string} installPath - Installation path
+ * @param {string} methodId - Installation method
  */
 function updateClaudeConfig(repoUrl, installPath, methodId) {
-    try {
-        // Path to Claude Desktop configuration file
-        const configPath = 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
-        
-        // Read the current configuration
-        let config = {};
-        try {
-            const configData = localStorage.getItem('claude_config');
-            if (configData) {
-                config = JSON.parse(configData);
-            } else {
-                // Default configuration if not found
-                config = {
-                    globalShortcut: "Ctrl+Space",
-                    theme: "dark",
-                    mcpServers: {}
-                };
-            }
-        } catch (error) {
-            logMessage(`Error reading configuration: ${error.message}`, 'error');
-            return;
+    // Use the config module if available
+    if (window.InstallerUIConfig && window.InstallerUIConfig.updateClaudeConfig) {
+        window.InstallerUIConfig.updateClaudeConfig(repoUrl, installPath, methodId);
+    } else {
+        // Log fallback
+        if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+            window.InstallerUIUtils.logMessage('Configuration update simulated', 'info');
+        } else {
+            console.log('Configuration update simulated');
         }
-        
-        // Ensure mcpServers object exists
-        if (!config.mcpServers) {
-            config.mcpServers = {};
-        }
-        
-        // Node.js executable path
-        const nodePath = 'C:\\Program Files\\nodejs\\node.exe';
-        
-        // Python executable path
-        const pythonPath = 'python';
-        
-        // Base path for npm modules
-        const npmModulesPath = 'C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules';
-        
-        // Add or update MCP servers
-        const serverConfigs = {
-            // Existing servers
-            'filesystem': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-filesystem\\dist\\index.js`,
-                    'C:\\Users\\Admin\\Downloads',
-                    'C:\\Users\\Admin\\Documents',
-                    'C:\\Users\\Admin\\Desktop'
-                ],
-                env: { DEBUG: '*' }
-            },
-            'memory': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-memory\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'brave-search': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-brave-search\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'puppeteer': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-puppeteer\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'fetch': {
-                command: pythonPath,
-                args: [
-                    '-m',
-                    'mcp_server_fetch'
-                ],
-                env: { DEBUG: '*' }
-            },
-            
-            // New servers
-            'aws-kb-retrieval-server': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-aws-kb-retrieval\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'everart': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-everart\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'everything': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-everything\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'gdrive': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-gdrive\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'git': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-git\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'github': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-github\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'gitlab': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-gitlab\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'google-maps': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-google-maps\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'postgres': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-postgres\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'redis': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-redis\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'sentry': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-sentry\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'sequentialthinking': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-sequentialthinking\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'slack': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-slack\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'sqlite': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-sqlite\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            },
-            'time': {
-                command: nodePath,
-                args: [
-                    `${npmModulesPath}\\@modelcontextprotocol\\server-time\\dist\\index.js`
-                ],
-                env: { DEBUG: '*' }
-            }
-        };
-        
-        // Update the configuration with all server configs
-        Object.assign(config.mcpServers, serverConfigs);
-        
-        // Save the updated configuration
-        try {
-            // Write the configuration to the file
-            writeClaudeConfig(configPath, config);
-            
-            // Also store in localStorage for simulation purposes
-            localStorage.setItem('claude_config', JSON.stringify(config, null, 2));
-            
-            // Log success
-            logMessage('Claude Desktop configuration updated with new MCP servers', 'success');
-            logMessage(`Added ${Object.keys(serverConfigs).length - 5} new MCP servers to configuration`, 'success');
-            
-            // Execute the actual npm install commands for the servers
-            const newServers = Object.keys(serverConfigs).filter(server => !['filesystem', 'memory', 'brave-search', 'puppeteer', 'fetch'].includes(server));
-            logMessage(`New servers available: ${newServers.join(', ')}`, 'info');
-        } catch (error) {
-            logMessage(`Error saving configuration: ${error.message}`, 'error');
-        }
-    } catch (error) {
-        logMessage(`Error updating Claude Desktop configuration: ${error.message}`, 'error');
     }
 }
 
 /**
- * Actually install the MCP servers using the specified method
- * @param {string} methodId - The installation method (npx, uv, python)
+ * Install MCP servers
+ * @param {string} methodId - Installation method
  */
 function installMcpServers(methodId) {
-    try {
-        // List of servers to install
-        const serversToInstall = [
-            'github',
-            'redis',
-            'time'
-        ];
+    // Use the server discovery module if available
+    if (window.InstallerUIServerDiscovery && window.InstallerUIServerDiscovery.discoverInstalledServers) {
+        const installPath = document.getElementById('installPath').value;
+        const installedServers = window.InstallerUIServerDiscovery.discoverInstalledServers(installPath, methodId);
         
-        // Installation commands for each method
-        const installCommands = {
-            npx: (server) => `npx @modelcontextprotocol/server-${server}@latest`,
-            uv: (server) => `uv install @modelcontextprotocol/server-${server}@latest`,
-            python: (server) => `pip install modelcontextprotocol-server-${server}`
-        };
-        
-        // Get the installation command generator for the selected method
-        const commandGenerator = installCommands[methodId];
-        
-        // Install each server
-        serversToInstall.forEach(server => {
-            const command = commandGenerator(server);
-            logMessage(`Installing server: ${server}`, 'info');
-            logMessage(`Executing: ${command}`, 'info');
-            
-            // In a real implementation, this would execute the command
-            // For simulation purposes, we'll just log the action
-            setTimeout(() => {
-                logMessage(`Successfully installed @modelcontextprotocol/server-${server}`, 'success');
-            }, 500);
-        });
-        
-        return true;
-    } catch (error) {
-        logMessage(`Error installing MCP servers: ${error.message}`, 'error');
-        return false;
-    }
-}
-
-/**
- * Create a backup of the Claude Desktop configuration file
- * @param {string} configPath - The path to the configuration file
- * @returns {string} The path to the backup file
- */
-function backupClaudeConfig(configPath) {
-    try {
-        // Generate backup filename with timestamp
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupPath = `${configPath}.${timestamp}.backup`;
-        
-        logMessage(`Creating backup of configuration file at ${backupPath}`, 'info');
-        
-        // Create a command to copy the file
-        const command = `copy "${configPath}" "${backupPath}"`;
-        
-        // Execute the command
-        try {
-            // In a real implementation, this would use Node.js fs.copyFileSync
-            // For our simulation, we'll log the action
-            logMessage(`Executing: ${command}`, 'info');
-            
-            // Store the backup in localStorage for simulation
-            const currentConfig = localStorage.getItem('claude_config');
-            if (currentConfig) {
-                localStorage.setItem(`claude_config_backup_${timestamp}`, currentConfig);
-            }
-            
-            logMessage(`Backup created successfully`, 'success');
-            return backupPath;
-        } catch (backupError) {
-            logMessage(`Error creating backup: ${backupError.message}`, 'warning');
-            return null;
+        if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+            window.InstallerUIUtils.logMessage(`Installed MCP servers: ${installedServers.join(', ')}`, 'info');
+        } else {
+            console.log(`Installed MCP servers: ${installedServers.join(', ')}`);
         }
-    } catch (error) {
-        logMessage(`Error in backup process: ${error.message}`, 'error');
-        return null;
-    }
-}
-
-/**
- * Fix a corrupted JSON configuration file
- * @param {string} configPath - The path to the configuration file
- * @returns {boolean} Whether the fix was successful
- */
-function fixJsonConfig(configPath) {
-    try {
-        logMessage(`Attempting to fix JSON configuration file at ${configPath}`, 'info');
-        
-        // In a real implementation, this would read the file, attempt to parse it,
-        // and if that fails, restore from a backup or create a default configuration
-        
-        // For our simulation, we'll create a default configuration
-        const defaultConfig = {
-            globalShortcut: "Ctrl+Space",
-            theme: "dark",
-            mcpServers: {
-                filesystem: {
-                    command: "C:\\Program Files\\nodejs\\node.exe",
-                    args: [
-                        "C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-filesystem\\dist\\index.js",
-                        "C:\\Users\\Admin\\Downloads",
-                        "C:\\Users\\Admin\\Documents",
-                        "C:\\Users\\Admin\\Desktop"
-                    ],
-                    env: { DEBUG: "*" }
-                },
-                memory: {
-                    command: "C:\\Program Files\\nodejs\\node.exe",
-                    args: [
-                        "C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-memory\\dist\\index.js"
-                    ],
-                    env: { DEBUG: "*" }
-                }
-            }
-        };
-        
-        // Try to read the current configuration
-        let currentConfig = null;
-        try {
-            // In a real implementation, this would use Node.js fs.readFileSync
-            // For our simulation, we'll use localStorage
-            const configData = localStorage.getItem('claude_config');
-            if (configData) {
-                currentConfig = JSON.parse(configData);
-            }
-        } catch (readError) {
-            logMessage(`Error reading configuration: ${readError.message}`, 'warning');
-        }
-        
-        // If we couldn't read the configuration, use the default
-        if (!currentConfig) {
-            logMessage(`Using default configuration`, 'warning');
-            currentConfig = defaultConfig;
-        }
-        
-        // Write the fixed configuration back to the file
-        writeClaudeConfig(configPath, currentConfig);
-        
-        logMessage(`JSON configuration file fixed successfully`, 'success');
-        return true;
-    } catch (error) {
-        logMessage(`Error fixing JSON configuration file: ${error.message}`, 'error');
-        return false;
-    }
-}
-
-/**
- * Write the Claude Desktop configuration file
- * @param {string} configPath - The path to the configuration file
- * @param {object} config - The configuration object to write
- */
-function writeClaudeConfig(configPath, config) {
-    try {
-        // First, create a backup of the current configuration
-        backupClaudeConfig(configPath);
-        
-        // Convert the configuration object to a JSON string
-        const configJson = JSON.stringify(config, null, 2);
-        
-        // Log the action to both log containers
-        logMessage(`Writing configuration to ${configPath}`, 'info');
-        logJsonMessage(`Writing configuration to ${configPath}`, 'info');
-        
-        // Create a command to write the configuration file
-        const command = `echo ${configJson.replace(/"/g, '\\"')} > "${configPath}"`;
-        
-        // In a real implementation, we would use Node.js fs.writeFileSync
-        // For our simulation, we'll use localStorage
-        try {
-            // Store in localStorage for simulation
-            localStorage.setItem('claude_config', configJson);
-            localStorage.setItem('claude_config_written', 'true');
-            
-            // Log the command that would be executed
-            logMessage(`Executing: ${command}`, 'info');
-            logJsonMessage(`Executing: ${command}`, 'info');
-            
-            // Verify the file was written
-            logMessage(`Configuration file written successfully`, 'success');
-            logJsonMessage(`Configuration file written successfully`, 'success');
-        } catch (writeError) {
-            logMessage(`Error writing configuration: ${writeError.message}`, 'error');
-            logJsonMessage(`Error writing configuration: ${writeError.message}`, 'error');
-        }
-        
-        return true;
-    } catch (error) {
-        logMessage(`Error writing configuration file: ${error.message}`, 'error');
-        logJsonMessage(`Error writing configuration file: ${error.message}`, 'error');
-        return false;
-    }
-}
-
-/**
- * Log a message to the JSON logs container
- * @param {string} message - The message to log
- * @param {string} type - The type of log (success, error, warning, info)
- */
-function logJsonMessage(message, type = 'info') {
-    const jsonLogsContainer = document.getElementById('jsonLogsContainer');
-    if (!jsonLogsContainer) return;
-    
-    // Create log message element
-    const logElement = document.createElement('div');
-    logElement.className = `log-message ${type}`;
-    
-    // Add timestamp
-    const timestamp = new Date().toLocaleTimeString();
-    logElement.textContent = `[${timestamp}] ${message}`;
-    
-    // Add to container
-    jsonLogsContainer.appendChild(logElement);
-    
-    // Show the logs container
-    jsonLogsContainer.style.display = 'block';
-    
-    // Scroll to bottom
-    jsonLogsContainer.scrollTop = jsonLogsContainer.scrollHeight;
-}
-
-/**
- * Log a message to the log container
- * @param {string} message - The message to log
- * @param {string} type - The type of log (success, error, warning, info)
- */
-function logMessage(message, type = '') {
-    const logContainer = document.getElementById('logContainer');
-    if (!logContainer) return;
-    
-    const logElement = document.createElement('div');
-    logElement.className = `log-message ${type}`;
-    logElement.textContent = message;
-    logContainer.appendChild(logElement);
-    logContainer.scrollTop = logContainer.scrollHeight;
-}
-
-/**
- * Update the server status indicator
- * @param {string} status - The server status (running, stopped)
- */
-function updateServerStatus(status) {
-    const statusIndicator = document.getElementById('status-indicator');
-    if (!statusIndicator) return;
-    
-    const statusDot = statusIndicator.querySelector('.status-dot');
-    const statusText = statusIndicator.querySelector('.status-text');
-    
-    if (status === 'running') {
-        if (statusDot) statusDot.className = 'status-dot online';
-        if (statusText) statusText.textContent = 'Online';
     } else {
-        if (statusDot) statusDot.className = 'status-dot offline';
-        if (statusText) statusText.textContent = 'Offline';
+        // Log fallback
+        if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+            window.InstallerUIUtils.logMessage('MCP server installation simulated', 'info');
+        } else {
+            console.log('MCP server installation simulated');
+        }
     }
 }
 
 /**
- * Show welcome message
+ * Verify configuration
  */
-function showWelcomeMessage() {
-    logMessage('Welcome to the Claude Desktop MCP Installer for Windows 11', 'success');
-    logMessage('This installer will help you set up an MCP server with comprehensive verification', 'info');
-    
-    // Check if AI integration is available
-    const geminiApiKey = localStorage.getItem('geminiApiKey');
-    const claudeApiKey = localStorage.getItem('claudeApiKey');
-    
-    if (geminiApiKey || claudeApiKey) {
-        logMessage('AI-assisted installation is enabled. AI will help resolve installation issues automatically.', 'info');
+function verifyConfiguration() {
+    // Use the config verification module if available
+    if (window.InstallerUIConfigVerification && window.InstallerUIConfigVerification.verifyConfiguration) {
+        // Get config path based on OS
+        const os = window.InstallerUIUtils && window.InstallerUIUtils.detectOS ? 
+            window.InstallerUIUtils.detectOS() : 
+            (window.navigator.userAgent.indexOf('Windows') !== -1 ? 'windows' : 'other');
+        
+        let configPath;
+        
+        if (os === 'windows') {
+            configPath = 'C:\\Users\\Admin\\AppData\\Roaming\\Claude\\claude_desktop_config.json';
+        } else if (os === 'macos') {
+            configPath = '/Users/admin/Library/Application Support/Claude/claude_desktop_config.json';
+        } else {
+            configPath = '/home/user/.config/Claude/claude_desktop_config.json';
+        }
+        
+        window.InstallerUIConfigVerification.verifyConfiguration(configPath);
     } else {
-        logMessage('Add AI model API keys in Advanced Configuration > AI Integration for AI-assisted installation', 'info');
+        // Log fallback
+        if (window.InstallerUIUtils && window.InstallerUIUtils.logMessage) {
+            window.InstallerUIUtils.logMessage('Configuration verification simulated', 'info');
+        } else {
+            console.log('Configuration verification simulated');
+        }
     }
 }
 
-/**
- * Detect the operating system
- * @returns {string} The detected OS ('windows', 'macos', 'linux', or 'unknown')
- */
-function detectOS() {
-    const userAgent = window.navigator.userAgent;
-    if (userAgent.indexOf('Windows') !== -1) return 'windows';
-    if (userAgent.indexOf('Mac') !== -1) return 'macos';
-    if (userAgent.indexOf('Linux') !== -1) return 'linux';
-    return 'unknown';
-}
+// Initialize when the DOM is loaded
+document.addEventListener('DOMContentLoaded', initInstallerUI);
 
-/**
- * Validate a GitHub repository URL
- * @param {string} url - The URL to validate
- * @returns {boolean} Whether the URL is valid
- */
-function isValidGitHubUrl(url) {
-    return /^(https?:\/\/)?(www\.)?github\.com\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+(\.git)?$/i.test(url);
-}
+// Export functions for use in other modules
+window.InstallerUI = {
+    initInstallerUI,
+    setupEventListeners,
+    updateUIForMethod,
+    updateUIForTemplate,
+    getTemplateDetails,
+    getInstallationParameters,
+    validateInstallationParameters,
+    showError,
+    startInstallation,
+    showInstallationUI,
+    checkSystemRequirements,
+    simulateInstallation,
+    updateClaudeConfig,
+    installMcpServers,
+    verifyConfiguration
+};

@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/backup-restore.css">
+    <link rel="stylesheet" href="css/notifications.css">
+    <link rel="stylesheet" href="css/backup-statistics.css">
 </head>
 <body>
     <div class="container">
@@ -16,6 +19,11 @@
             </div>
             <h1>Claude Desktop MCP Installer</h1>
             <p>Install and configure MCP packages with comprehensive verification</p>
+            <div class="header-controls">
+                <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Light/Dark Theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
         </div>
         
         <div class="content">
@@ -30,221 +38,881 @@
                 </label>
             </div>
             
-            <div class="form-group">
-                <label for="repoUrl">GitHub Repository URL</label>
-                <div class="input-group">
-                    <input type="text" id="repoUrl" placeholder="https://github.com/username/repo.git">
-                    <i class="fas fa-code-branch"></i>
+            <!-- Main Tab Navigation -->
+            <div class="main-tabs">
+                <div class="tab-buttons">
+                    <button class="main-tab-btn active" data-tab="install">Install</button>
+                    <button class="main-tab-btn" data-tab="manage">Manage Servers</button>
+                    <button class="main-tab-btn" data-tab="search">Search</button>
+                    <button class="main-tab-btn" data-tab="backup">Backup & Restore</button>
                 </div>
             </div>
             
-            
-            <div class="form-group">
-                <label>MCP Server Template</label>
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <input type="text" id="templateSearch" placeholder="Search templates...">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="template-grid">
-                    <div class="template-card selected" data-template="basic-api">
-                        <div class="template-badge beginner">Beginner</div>
-                        <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
-                        </div>
-                        <h3>Basic API Server</h3>
-                        <p>Simple REST API server with basic CRUD operations</p>
+            <!-- Install Tab Content -->
+            <div class="main-tab-content active" id="install-tab">
+                <div class="form-group">
+                    <label for="repoUrl">GitHub Repository URL</label>
+                    <div class="input-group">
+                        <input type="text" id="repoUrl" placeholder="https://github.com/username/repo.git">
+                        <i class="fas fa-code-branch"></i>
                     </div>
-                    <div class="template-card" data-template="web-dashboard">
-                        <div class="template-badge beginner">Beginner</div>
-                        <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
-                            <i class="fas fa-tachometer-alt"></i>
-                        </div>
-                        <h3>Web Dashboard</h3>
-                        <p>Admin dashboard with user management</p>
-                    </div>
-                    <div class="template-card" data-template="data-processor">
-                        <div class="template-badge intermediate">Intermediate</div>
-                        <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <h3>Data Processor</h3>
-                        <p>Background processing with task queue</p>
-                    </div>
-                    <div class="template-card" data-template="media-server">
-                        <div class="template-badge intermediate">Intermediate</div>
-                        <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
-                            <i class="fas fa-photo-video"></i>
-                        </div>
-                        <h3>Media Server</h3>
-                        <p>File storage and streaming capabilities</p>
-                    </div>
-                </div>
-            </div>
-            
-            <label>Installation Method</label>
-            <div class="method-options">
-                <div class="method-option selected" data-method="npx">
-                    <i class="fab fa-node-js"></i>
-                    <h3>npx</h3>
-                    <p>Fastest method with Node.js</p>
-                </div>
-                <div class="method-option" data-method="uv">
-                    <i class="fas fa-bolt"></i>
-                    <h3>uv</h3>
-                    <p>Universal package installer</p>
-                </div>
-                <div class="method-option" data-method="python">
-                    <i class="fab fa-python"></i>
-                    <h3>Python</h3>
-                    <p>Works with pip</p>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="installPath">Installation Path (optional)</label>
-                <div class="input-group">
-                    <input type="text" id="installPath" placeholder="C:\Program Files\Claude Desktop MCP">
-                    <i class="fas fa-folder-open"></i>
-                </div>
-            </div>
-            
-            <!-- JSON Configuration Tools -->
-            <div class="form-group">
-                <label>JSON Configuration Tools</label>
-                <div class="json-tools">
-                    <button id="backupJsonBtn" class="btn btn-outline">
-                        <i class="fas fa-save"></i> Backup Config
-                    </button>
-                    <button id="fixJsonBtn" class="btn btn-outline">
-                        <i class="fas fa-wrench"></i> Fix JSON Config
-                    </button>
-                    <button id="verifyJsonBtn" class="btn btn-outline">
-                        <i class="fas fa-check-circle"></i> Verify Config
-                    </button>
-                </div>
-                <p class="help-text">These tools help manage the Claude Desktop configuration file</p>
-                
-                <!-- JSON Tools Log Container -->
-                <div class="json-logs" id="jsonLogsContainer">
-                    <!-- JSON tool logs will appear here -->
-                </div>
-            </div>
-            
-            <!-- Advanced Options (hidden by default) -->
-            <div class="advanced-options" id="advancedOptions">
-                <h3>Advanced Configuration</h3>
-                
-                <div class="tab-container">
-                    <div class="tab-buttons">
-                        <button class="tab-btn active" data-tab="network">Network</button>
-                        <button class="tab-btn" data-tab="environment">Environment</button>
-                        <button class="tab-btn" data-tab="storage">Storage</button>
-                        <button class="tab-btn" data-tab="security">Security</button>
-                        <button class="tab-btn" data-tab="ai">AI Integration</button>
-                    </div>
-                    
-                    <div class="tab-content active" id="network-tab">
-                        <div class="form-group">
-                            <label for="serverPort">Server Port</label>
-                            <input type="number" id="serverPort" value="3000" min="0" max="65535">
-                        </div>
-                        <div class="form-group">
-                            <label for="enableSSL">
-                                <input type="checkbox" id="enableSSL"> Enable SSL/TLS
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="corsOrigin">CORS Allowed Origins</label>
-                            <input type="text" id="corsOrigin" placeholder="*">
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="environment-tab">
-                        <div class="form-group">
-                            <label for="nodeEnv">Node Environment</label>
-                            <select id="nodeEnv">
-                                <option value="development">Development</option>
-                                <option value="production">Production</option>
-                                <option value="testing">Testing</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="logLevel">Log Level</label>
-                            <select id="logLevel">
-                                <option value="error">Error</option>
-                                <option value="warn">Warning</option>
-                                <option value="info" selected>Info</option>
-                                <option value="debug">Debug</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="storage-tab">
-                        <div class="form-group">
-                            <label for="dataDir">Data Directory</label>
-                            <input type="text" id="dataDir" placeholder="C:\Program Files\Claude Desktop MCP\data">
-                        </div>
-                        <div class="form-group">
-                            <label for="enablePersistence">
-                                <input type="checkbox" id="enablePersistence" checked> Enable Data Persistence
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="backupInterval">Backup Interval (hours)</label>
-                            <input type="number" id="backupInterval" value="24" min="1">
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="security-tab">
-                        <div class="form-group">
-                            <label for="authType">Authentication Type</label>
-                            <select id="authType">
-                                <option value="none">None</option>
-                                <option value="basic">Basic Auth</option>
-                                <option value="jwt" selected>JWT</option>
-                                <option value="oauth">OAuth</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="jwtSecret">JWT Secret (if applicable)</label>
-                            <input type="text" id="jwtSecret" placeholder="Generate a strong secret">
-                            <button class="btn btn-outline" style="width: auto; margin-top: 5px;" id="generateSecret">Generate</button>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="ai-tab">
-                        <div class="form-group">
-                            <label for="geminiApiKey">Google Gemini 2.5 Pro API Key</label>
-                            <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key">
-                        </div>
-                        <div class="form-group">
-                            <label for="claudeApiKey">Claude Sonnet 3.7 API Key</label>
-                            <input type="password" id="claudeApiKey" placeholder="Enter your Claude API key">
-                        </div>
-                        <div class="form-group">
-                            <label for="aiAssistance">
-                                <input type="checkbox" id="aiAssistance" checked> Enable AI-assisted installation
-                            </label>
-                            <p class="help-text">AI will help resolve installation issues automatically</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <button id="installBtn" class="btn">
-                <i class="fas fa-magic"></i> Install MCP Server
-            </button>
-            
-            <div class="progress-container" id="progressContainer">
-                <div class="progress-title">
-                    <span id="progressStatus">Preparing installation...</span>
-                    <span id="progressPercent">0%</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress" id="progressBar"></div>
                 </div>
                 
-                <div class="logs" id="logContainer">
-                    <!-- Log messages will appear here -->
+                <div class="form-group">
+                    <label>MCP Server Template</label>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <input type="text" id="templateSearch" placeholder="Search templates...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="template-grid">
+                        <div class="template-card selected" data-template="basic-api">
+                            <div class="template-badge beginner">Beginner</div>
+                            <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
+                            </div>
+                            <h3>Basic API Server</h3>
+                            <p>Simple REST API server with basic CRUD operations</p>
+                        </div>
+                        <div class="template-card" data-template="web-dashboard">
+                            <div class="template-badge beginner">Beginner</div>
+                            <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <h3>Web Dashboard</h3>
+                            <p>Admin dashboard with user management</p>
+                        </div>
+                        <div class="template-card" data-template="data-processor">
+                            <div class="template-badge intermediate">Intermediate</div>
+                            <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <h3>Data Processor</h3>
+                            <p>Background processing with task queue</p>
+                        </div>
+                        <div class="template-card" data-template="media-server">
+                            <div class="template-badge intermediate">Intermediate</div>
+                            <div style="font-size: 48px; margin: 15px 0; color: #2E86AB;">
+                                <i class="fas fa-photo-video"></i>
+                            </div>
+                            <h3>Media Server</h3>
+                            <p>File storage and streaming capabilities</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <label>Installation Method</label>
+                <div class="method-options">
+                    <div class="method-option selected" data-method="npx">
+                        <i class="fab fa-node-js"></i>
+                        <h3>npx</h3>
+                        <p>Fastest method with Node.js</p>
+                    </div>
+                    <div class="method-option" data-method="uv">
+                        <i class="fas fa-bolt"></i>
+                        <h3>uv</h3>
+                        <p>Universal package installer</p>
+                    </div>
+                    <div class="method-option" data-method="python">
+                        <i class="fab fa-python"></i>
+                        <h3>Python</h3>
+                        <p>Works with pip</p>
+                    </div>
+                    <div class="method-option" data-method="docker">
+                        <i class="fab fa-docker"></i>
+                        <h3>Docker</h3>
+                        <p>Containerized deployment</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="installPath">Installation Path (optional)</label>
+                    <div class="input-group">
+                        <input type="text" id="installPath" placeholder="C:\Program Files\Claude Desktop MCP">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                </div>
+                
+                <div class="install-form-row toggles">
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            <span>Advanced Mode</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="modeToggle">
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            <span>AI-Assisted Installation</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="aiModeToggle">
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label>
+                        <div class="tooltip-icon" title="AI-assisted installation analyzes repositories to determine optimal installation methods and automatically handles dependencies and configurations.">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- JSON Configuration Tools -->
+                <div class="form-group">
+                    <label>JSON Configuration Tools</label>
+                    <div class="json-tools">
+                        <button id="backupJsonBtn" class="btn btn-outline">
+                            <i class="fas fa-save"></i> Backup Config
+                        </button>
+                        <button id="fixJsonBtn" class="btn btn-outline">
+                            <i class="fas fa-wrench"></i> Fix JSON Config
+                        </button>
+                        <button id="verifyJsonBtn" class="btn btn-outline">
+                            <i class="fas fa-check-circle"></i> Verify Config
+                        </button>
+                    </div>
+                    <p class="help-text">These tools help manage the Claude Desktop configuration file</p>
+                    
+                    <!-- JSON Tools Log Container -->
+                    <div class="json-logs" id="jsonLogsContainer">
+                        <!-- JSON tool logs will appear here -->
+                    </div>
+                </div>
+                
+                <!-- Advanced Options (hidden by default) -->
+                <div class="advanced-options" id="advancedOptions">
+                    <h3>Advanced Configuration</h3>
+                    
+                    <div class="tab-container">
+                        <div class="tab-buttons">
+                            <button class="tab-btn active" data-tab="network">Network</button>
+                            <button class="tab-btn" data-tab="environment">Environment</button>
+                            <button class="tab-btn" data-tab="storage">Storage</button>
+                            <button class="tab-btn" data-tab="security">Security</button>
+                            <button class="tab-btn" data-tab="ai">AI Integration</button>
+                        </div>
+                        
+                        <div class="tab-content active" id="network-tab">
+                            <div class="form-group">
+                                <label for="serverPort">Server Port</label>
+                                <input type="number" id="serverPort" value="3000" min="0" max="65535">
+                            </div>
+                            <div class="form-group">
+                                <label for="enableSSL">
+                                    <input type="checkbox" id="enableSSL"> Enable SSL/TLS
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="corsOrigin">CORS Allowed Origins</label>
+                                <input type="text" id="corsOrigin" placeholder="*">
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="environment-tab">
+                            <div class="form-group">
+                                <label for="nodeEnv">Node Environment</label>
+                                <select id="nodeEnv">
+                                    <option value="development">Development</option>
+                                    <option value="production">Production</option>
+                                    <option value="testing">Testing</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="logLevel">Log Level</label>
+                                <select id="logLevel">
+                                    <option value="error">Error</option>
+                                    <option value="warn">Warning</option>
+                                    <option value="info" selected>Info</option>
+                                    <option value="debug">Debug</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Docker Configuration Section -->
+                            <div class="form-group docker-config" id="dockerConfig" style="display: none;">
+                                <h4>Docker Configuration</h4>
+                                <div class="form-group">
+                                    <label for="dockerPort">Container Port Mapping</label>
+                                    <input type="text" id="dockerPort" value="3000:3000" placeholder="host:container">
+                                    <p class="help-text">Format: hostPort:containerPort</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dockerEnvVars">Environment Variables</label>
+                                    <textarea id="dockerEnvVars" rows="3" placeholder="KEY1=value1&#10;KEY2=value2"></textarea>
+                                    <p class="help-text">One variable per line in KEY=value format</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dockerVolumes">Additional Volumes</label>
+                                    <textarea id="dockerVolumes" rows="2" placeholder="/host/path:/container/path"></textarea>
+                                    <p class="help-text">One volume mapping per line</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dockerNetworkMode">
+                                        <input type="checkbox" id="dockerNetworkMode"> Use Host Network Mode
+                                    </label>
+                                    <p class="help-text">Use host network stack inside container</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="storage-tab">
+                            <div class="form-group">
+                                <label for="dataDir">Data Directory</label>
+                                <input type="text" id="dataDir" placeholder="C:\Program Files\Claude Desktop MCP\data">
+                            </div>
+                            <div class="form-group">
+                                <label for="enablePersistence">
+                                    <input type="checkbox" id="enablePersistence" checked> Enable Data Persistence
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="backupInterval">Backup Interval (hours)</label>
+                                <input type="number" id="backupInterval" value="24" min="1">
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="security-tab">
+                            <div class="form-group">
+                                <label for="authType">Authentication Type</label>
+                                <select id="authType">
+                                    <option value="none">None</option>
+                                    <option value="basic">Basic Auth</option>
+                                    <option value="jwt" selected>JWT</option>
+                                    <option value="oauth">OAuth</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="jwtSecret">JWT Secret (if applicable)</label>
+                                <input type="text" id="jwtSecret" placeholder="Generate a strong secret">
+                                <button class="btn btn-outline" style="width: auto; margin-top: 5px;" id="generateSecret">Generate</button>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="ai-tab">
+                            <div class="form-group">
+                                <label for="geminiApiKey">Google Gemini 2.5 Pro API Key</label>
+                                <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key">
+                            </div>
+                            <div class="form-group">
+                                <label for="claudeApiKey">Claude Sonnet 3.7 API Key</label>
+                                <input type="password" id="claudeApiKey" placeholder="Enter your Claude API key">
+                            </div>
+                            <div class="form-group">
+                                <label for="aiAssistance">
+                                    <input type="checkbox" id="aiAssistance" checked> Enable AI-assisted installation
+                                </label>
+                                <p class="help-text">AI will help resolve installation issues automatically</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Installation Progress -->
+                <div id="installationProgress" class="installation-progress" style="display: none;">
+                    <h3>Installation Progress</h3>
+                    <div class="progress">
+                        <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <p id="progressStatus" class="progress-status">Preparing installation...</p>
+                    <div id="logContainer" class="log-container"></div>
+                </div>
+                
+                <!-- AI Analysis Panel -->
+                <div id="aiAnalysisPanel" class="ai-analysis-panel ai-feature" style="display: none;">
+                    <div class="ai-analysis-header">
+                        <h3 class="ai-analysis-title">AI Repository Analysis</h3>
+                        <span id="aiAnalysisStatus" class="ai-analysis-status">Analyzing...</span>
+                    </div>
+                    
+                    <div class="ai-analysis-content">
+                        <div class="ai-analysis-item">
+                            <i class="fas fa-code ai-analysis-item-icon"></i>
+                            <div class="ai-analysis-item-text">
+                                <strong>Language:</strong> <span id="aiLanguage">-</span>
+                            </div>
+                        </div>
+                        <div class="ai-analysis-item">
+                            <i class="fas fa-cubes ai-analysis-item-icon"></i>
+                            <div class="ai-analysis-item-text">
+                                <strong>Framework:</strong> <span id="aiFramework">-</span>
+                            </div>
+                        </div>
+                        <div class="ai-analysis-item">
+                            <i class="fas fa-puzzle-piece ai-analysis-item-icon"></i>
+                            <div class="ai-analysis-item-text">
+                                <strong>Dependencies:</strong> <span id="aiDependencies">-</span>
+                            </div>
+                        </div>
+                        <div class="ai-analysis-item">
+                            <i class="fas fa-wrench ai-analysis-item-icon"></i>
+                            <div class="ai-analysis-item-text">
+                                <strong>Recommended Method:</strong> <span id="aiRecommendedMethod">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>Installation Plan</h4>
+                    <div id="aiPlanSteps" class="ai-plan-steps">
+                        <!-- Installation steps will be added here dynamically -->
+                    </div>
+                </div>
+                
+                <button id="installBtn" class="btn">
+                    <i class="fas fa-magic"></i> Install MCP Server
+                </button>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-title">
+                        <span id="progressStatus">Preparing installation...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                    
+                    <div class="logs" id="logContainer">
+                        <!-- Log messages will appear here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search Tab Content -->
+            <div class="main-tab-content" id="search-tab">
+                <div class="search-container">
+                    <div class="search-header">
+                        <h3><i class="fas fa-search"></i> Find MCP Servers</h3>
+                        <p class="search-description">Search for MCP servers from GitHub repositories and other sources</p>
+                    </div>
+                    
+                    <div class="search-form">
+                        <div class="search-input-group">
+                            <input type="text" id="githubSearchQuery" placeholder="Search for MCP servers...">
+                            <button id="githubSearchBtn" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                        
+                        <div class="search-filters">
+                            <div class="filter-group">
+                                <label for="githubSort"><i class="fas fa-sort"></i> Sort By</label>
+                                <select id="githubSort">
+                                    <option value="stars">Stars</option>
+                                    <option value="updated">Last Updated</option>
+                                    <option value="forks">Forks</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filterType"><i class="fas fa-tag"></i> Type</label>
+                                <select id="filterType">
+                                    <option value="all">All</option>
+                                    <option value="api">API</option>
+                                    <option value="data">Data Processing</option>
+                                    <option value="browser">Browser</option>
+                                    <option value="filesystem">Filesystem</option>
+                                    <option value="memory">Memory</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filterLanguage"><i class="fas fa-code"></i> Language</label>
+                                <select id="filterLanguage">
+                                    <option value="all">All</option>
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="python">Python</option>
+                                    <option value="rust">Rust</option>
+                                    <option value="go">Go</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group toggle-filter">
+                                <div class="toggle-switch small">
+                                    <input type="checkbox" id="aiSearchMode">
+                                    <label for="aiSearchMode"></label>
+                                </div>
+                                <label for="aiSearchMode" class="toggle-label"><i class="fas fa-robot"></i> AI-Enhanced Search</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="search-results-container">
+                        <div class="search-results-header">
+                            <h4><i class="fas fa-list"></i> Search Results</h4>
+                            <div class="results-count" id="resultsCount">0 results</div>
+                        </div>
+                        
+                        <div id="githubSearchResults" class="search-results">
+                            <div class="loading-indicator" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>Searching repositories...</p>
+                            </div>
+                            <div class="error-message" style="display: none;">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <p>Error fetching results. Please try again.</p>
+                            </div>
+                            <div class="empty-results-message">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Enter keywords above to search for MCP servers.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="installation-queue-container">
+                        <div class="installation-queue-header">
+                            <h4><i class="fas fa-tasks"></i> Installation Queue</h4>
+                            <div class="queue-actions">
+                                <button id="installQueueBtn" class="btn btn-outline btn-primary" disabled>
+                                    <i class="fas fa-download"></i> Install All
+                                </button>
+                                <button id="clearQueueBtn" class="btn btn-outline" disabled>
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="installationQueueList" class="installation-queue-list">
+                            <div class="empty-queue-message">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Your installation queue is empty. Add items from search results.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manage Servers Tab Content -->
+            <div class="main-tab-content" id="manage-tab">
+                <div class="server-management">
+                    <h3>Installed Servers</h3>
+                    
+                    <div class="server-controls">
+                        <button id="refreshServersBtn" class="btn btn-outline">
+                            <i class="fas fa-sync-alt"></i> Refresh Servers
+                        </button>
+                        <div class="search-container">
+                            <input type="text" id="serverSearch" placeholder="Search servers...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="server-list-container">
+                        <div class="server-list-header">
+                            <h3>Installed Servers</h3>
+                            <div class="server-list-actions">
+                                <button id="refreshServerListBtn" class="btn btn-outline btn-sm">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div class="server-list-batch-actions" style="display: none;">
+                            <div class="batch-selection-info">
+                                <span id="selectedServersCount">0</span> servers selected
+                            </div>
+                            <div class="batch-actions">
+                                <button id="batchStartBtn" class="btn btn-outline btn-success btn-sm" disabled>
+                                    <i class="fas fa-play"></i> Start
+                                </button>
+                                <button id="batchStopBtn" class="btn btn-outline btn-danger btn-sm" disabled>
+                                    <i class="fas fa-stop"></i> Stop
+                                </button>
+                                <button id="batchRestartBtn" class="btn btn-outline btn-warning btn-sm" disabled>
+                                    <i class="fas fa-sync"></i> Restart
+                                </button>
+                                <button id="batchBackupBtn" class="btn btn-outline btn-sm" disabled>
+                                    <i class="fas fa-save"></i> Backup
+                                </button>
+                                <button id="batchUpdateBtn" class="btn btn-outline btn-primary btn-sm" disabled>
+                                    <i class="fas fa-arrow-circle-up"></i> Update
+                                </button>
+                                <button id="cancelBatchBtn" class="btn btn-outline btn-sm">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Server Management Tabs -->
+                        <div class="server-management-tabs">
+                            <button class="server-tab-btn active" data-tab="servers">
+                                <i class="fas fa-server"></i> Servers
+                            </button>
+                            <button class="server-tab-btn" data-tab="docker" id="dockerTabBtn">
+                                <i class="fab fa-docker"></i> Docker
+                            </button>
+                            <button class="server-tab-btn" data-tab="backups" id="backupsTabBtn">
+                                <i class="fas fa-save"></i> Backups
+                            </button>
+                        </div>
+                        
+                        <!-- Servers Tab Content -->
+                        <div class="server-tab-content active" id="servers-tab-content">
+                            <div class="server-list" id="serverList">
+                                <!-- Server list items will be added here dynamically -->
+                            </div>
+                            <div id="serverListEmptyState" class="empty-state">
+                                <p>No servers installed yet.</p>
+                                <p>Install a server from the search tab to get started.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Docker Tab Content -->
+                        <div class="server-tab-content" id="docker-tab-content">
+                            <div class="docker-status-bar">
+                                <div class="docker-status">
+                                    <span>Docker Status:</span>
+                                    <span id="dockerStatusIndicator" class="status-indicator status-error" title="Docker status"></span>
+                                </div>
+                                <div id="dockerAvailabilityMessage" class="docker-availability-message error-message">
+                                    Docker is not available. Please install Docker and ensure it is running.
+                                </div>
+                                <div class="docker-controls">
+                                    <button id="refreshContainersBtn" class="btn btn-outline btn-sm docker-control">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                    <button id="createContainerBtn" class="btn btn-primary btn-sm docker-control">
+                                        <i class="fas fa-plus"></i> Create Container
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="container-list" id="containerList">
+                                <!-- Container list items will be added here dynamically -->
+                                <div class="loading-indicator">Loading containers...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Backups Tab Content -->
+                        <div class="server-tab-content" id="backups-tab-content">
+                            <div class="backup-manager-section">
+                                <div class="backup-manager-controls">
+                                    <div class="search-container">
+                                        <input type="text" id="backupSearchField" placeholder="Search backups...">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <div class="filter-container">
+                                        <select id="backupFilterSelect" class="form-control">
+                                            <option value="all">All Backups</option>
+                                            <option value="full">Full Backups</option>
+                                            <option value="config">Configuration Backups</option>
+                                            <option value="data">Data Backups</option>
+                                        </select>
+                                    </div>
+                                    <button id="refreshBackupsListBtn" class="btn btn-outline">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                    <button id="createNewBackupBtn" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Create Backup
+                                    </button>
+                                </div>
+                                
+                                <div class="backup-list" id="backupListContainer">
+                                    <!-- Backup list items will be added here dynamically -->
+                                    <div class="empty-message">No backups available</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="server-details" id="serverDetails">
+                        <div class="server-details-header">
+                            <h4 id="detailsServerName">Server Details</h4>
+                            <span class="status-badge" id="detailsServerStatus">Unknown</span>
+                        </div>
+                        
+                        <div class="server-details-tabs">
+                            <button class="server-tab-btn active" data-tab="info">Info</button>
+                            <button class="server-tab-btn" data-tab="config">Configuration</button>
+                            <button class="server-tab-btn" data-tab="logs">Logs</button>
+                        </div>
+                        
+                        <!-- Info Tab -->
+                        <div class="server-tab-content active" id="info-tab">
+                            <div class="server-details-content">
+                                <div class="server-info">
+                                    <div class="info-group">
+                                        <label>Container ID:</label>
+                                        <span id="containerId">-</span>
+                                    </div>
+                                    <div class="info-group">
+                                        <label>Image:</label>
+                                        <span id="containerImage">-</span>
+                                    </div>
+                                    <div class="info-group">
+                                        <label>Created:</label>
+                                        <span id="containerCreated">-</span>
+                                    </div>
+                                    <div class="info-group">
+                                        <label>Ports:</label>
+                                        <span id="containerPorts">-</span>
+                                    </div>
+                                    <div class="info-group">
+                                        <label>Volume Mounts:</label>
+                                        <span id="containerVolumes">-</span>
+                                    </div>
+                                    <div class="info-group">
+                                        <label>Version:</label>
+                                        <span id="containerVersion">-</span>
+                                    </div>
+                                    <div class="info-group">
+                                        <label>Repository:</label>
+                                        <span id="containerRepo">-</span>
+                                    </div>
+                                    <div class="info-group update-status" id="updateStatusContainer" style="display: none;">
+                                        <label>Update Status:</label>
+                                        <span id="updateStatus">-</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="server-actions-panel">
+                                    <button id="startServerBtn" class="btn btn-outline btn-success">
+                                        <i class="fas fa-play"></i> Start
+                                    </button>
+                                    <button id="stopServerBtn" class="btn btn-outline btn-danger">
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                    <button id="restartServerBtn" class="btn btn-outline btn-warning">
+                                        <i class="fas fa-sync"></i> Restart
+                                    </button>
+                                    <button id="checkUpdateBtn" class="btn btn-outline">
+                                        <i class="fas fa-cloud-download-alt"></i> Check for Updates
+                                    </button>
+                                    <button id="updateServerBtn" class="btn btn-outline btn-primary" style="display: none;">
+                                        <i class="fas fa-arrow-circle-up"></i> Update Server
+                                    </button>
+                                    <button id="backupBtn" class="btn btn-outline">
+                                        <i class="fas fa-save"></i> Backup
+                                    </button>
+                                    <button id="manageBackupsBtn" class="btn btn-outline">
+                                        <i class="fas fa-history"></i> Manage Backups
+                                    </button>
+                                    <button id="deleteServerBtn" class="btn btn-outline btn-danger">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Configuration Tab -->
+                        <div class="server-tab-content" id="config-tab">
+                            <div class="config-editor-container">
+                                <div class="config-file-selector">
+                                    <label for="configFileSelect">Configuration File:</label>
+                                    <select id="configFileSelect">
+                                        <option value="config.json">config.json</option>
+                                        <option value="environment.json">environment.json</option>
+                                        <option value="docker-compose.yml">docker-compose.yml</option>
+                                    </select>
+                                    <button id="refreshConfigBtn" class="btn btn-sm btn-outline">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                </div>
+                                
+                                <div class="config-editor-wrapper">
+                                    <div class="config-editor-header">
+                                        <span id="configFileName">config.json</span>
+                                        <div class="config-editor-actions">
+                                            <button id="saveConfigBtn" class="btn btn-sm btn-outline btn-success">
+                                                <i class="fas fa-save"></i> Save
+                                            </button>
+                                            <button id="formatConfigBtn" class="btn btn-sm btn-outline">
+                                                <i class="fas fa-code"></i> Format
+                                            </button>
+                                            <button id="validateConfigBtn" class="btn btn-sm btn-outline">
+                                                <i class="fas fa-check-circle"></i> Validate
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="config-editor">
+                                        <textarea id="configEditor" spellcheck="false"></textarea>
+                                    </div>
+                                    <div id="configValidationMessage" class="validation-message"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Logs Tab -->
+                        <div class="server-tab-content" id="logs-tab">
+                            <div class="server-logs">
+                                <div class="logs-header">
+                                    <h4>Container Logs</h4>
+                                    <div class="logs-controls">
+                                        <button id="refreshLogsBtn" class="btn btn-sm btn-outline">
+                                            <i class="fas fa-sync"></i> Refresh
+                                        </button>
+                                        <button id="clearLogsBtn" class="btn btn-sm btn-outline">
+                                            <i class="fas fa-eraser"></i> Clear
+                                        </button>
+                                        <button id="downloadLogsBtn" class="btn btn-sm btn-outline">
+                                            <i class="fas fa-download"></i> Download
+                                        </button>
+                                    </div>
+                                </div>
+                                <pre id="logsContent" class="logs-content"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Backup Tab Content -->
+            <div class="main-tab-content" id="backup-tab">
+                <div class="tab-header">
+                    <h2>Backup & Restore</h2>
+                    <div class="tab-actions">
+                        <button id="refresh-backups-btn" class="action-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="backup-tab">
+                    <div class="backup-header">
+                        <select id="backup-server-select" class="backup-server-select">
+                            <option value="" disabled selected>Select a server</option>
+                        </select>
+                        <button id="create-backup-btn" class="create-backup-btn">
+                            <i class="fas fa-save"></i> Create Backup
+                        </button>
+                    </div>
+                    
+                    <div class="backup-history">
+                        <h3>Backup History</h3>
+                        <div id="backup-history-container">
+                            <p>Please select a server to view backup history.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="backup-statistics">
+                        <h3>Backup Statistics</h3>
+                        <div id="backup-stats-container">
+                            <p>Select a server to view backup statistics.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Backup Modal -->
+                <div id="backup-modal" class="backup-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Create Backup</h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="backup-description">Description (optional)</label>
+                                <textarea id="backup-description" placeholder="Enter a description for this backup"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <div class="checkbox-container">
+                                    <input type="checkbox" id="backup-include-data" checked>
+                                    <label for="backup-include-data">Include server data</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="confirm-backup-btn" class="confirm-btn">Create Backup</button>
+                            <button id="cancel-backup-btn" class="cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Restore Modal -->
+                <div id="restore-modal" class="restore-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Restore Backup</h3>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to restore this backup?</p>
+                            <input type="hidden" id="restore-backup-id">
+                            <input type="hidden" id="restore-server-id">
+                            <div class="form-group">
+                                <div class="checkbox-container">
+                                    <input type="checkbox" id="restore-create-backup" checked>
+                                    <label for="restore-create-backup">Create backup of current state before restoring</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="confirm-restore-btn" class="confirm-btn">Restore</button>
+                            <button id="cancel-restore-btn" class="cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Container -->
+                <div id="backup-progress-container" class="backup-progress-container">
+                    <div class="progress-header">
+                        <h4>Backup Progress</h4>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div id="backup-progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div class="progress-info">
+                        <div id="backup-progress-text" class="progress-text">0%</div>
+                        <div id="backup-progress-status" class="progress-status">Preparing...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Container Details Panel -->
+            <div class="container-details-panel" id="containerDetailsPanel" style="display: none;">
+                <div class="container-details-header">
+                    <h4 id="containerDetailsName">Container Details</h4>
+                    <span id="containerDetailsStatus" class="status-badge">Unknown</span>
+                    <button id="closeContainerDetailsBtn" class="close-btn">&times;</button>
+                </div>
+                
+                <div class="container-details-tabs">
+                    <button class="container-details-tab active" data-tab="info">Info</button>
+                    <button class="container-details-tab" data-tab="logs">Logs</button>
+                    <button class="container-details-tab" data-tab="config">Config</button>
+                </div>
+                
+                <div class="container-details-tab-content" id="infoTabContent">
+                    <div class="container-info-grid">
+                        <div class="info-group">
+                            <label>Container ID:</label>
+                            <span id="containerDetailsId">-</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Image:</label>
+                            <span id="containerDetailsImage">-</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Created:</label>
+                            <span id="containerDetailsCreated">-</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Ports:</label>
+                            <div id="containerDetailsPorts">-</div>
+                        </div>
+                        <div class="info-group">
+                            <label>Volumes:</label>
+                            <div id="containerDetailsVolumes">-</div>
+                        </div>
+                        <div class="info-group">
+                            <label>Environment:</label>
+                            <div id="containerDetailsEnv">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="container-details-tab-content" id="logsTabContent" style="display: none;">
+                    <div class="container-logs-header">
+                        <h5>Container Logs</h5>
+                        <button id="refreshLogsBtn" class="btn btn-sm btn-outline">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="container-logs" id="containerLogsContent">
+                        <div class="loading-indicator">Loading logs...</div>
+                    </div>
+                </div>
+                
+                <div class="container-details-tab-content" id="configTabContent" style="display: none;">
+                    <div class="container-config-header">
+                        <h5>Container Configuration</h5>
+                    </div>
+                    <div class="container-config" id="containerConfigContent">
+                        <p>Configuration options will be displayed here.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -258,15 +926,366 @@
         </div>
     </div>
 
+    <!-- Backup Modal -->
+    <div id="backupModal" class="modal-dialog" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="backupModalTitle">Create Backup</h3>
+                <button class="close-btn" id="closeBackupModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createBackupForm">
+                    <input type="hidden" id="backupServerId">
+                    
+                    <div class="form-group">
+                        <label for="backupName">Backup Name</label>
+                        <input type="text" id="backupName" class="form-control" placeholder="Enter backup name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="backupDescription">Description (optional)</label>
+                        <textarea id="backupDescription" class="form-control" placeholder="Enter backup description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Backup Type</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="backupType" value="full" checked> 
+                                <span>Full Backup</span>
+                                <div class="help-text">Includes configuration and data files</div>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="backupType" value="config"> 
+                                <span>Configuration Only</span>
+                                <div class="help-text">Only includes configuration files</div>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="backupType" value="data"> 
+                                <span>Data Only</span>
+                                <div class="help-text">Only includes data files</div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" id="includeLogs"> Include log files
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="backupProgressContainer" class="progress-container" style="display: none;">
+                        <h4>Backup Progress</h4>
+                        <div class="progress">
+                            <div id="backupProgressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div id="backupProgressMessage" class="progress-message">Preparing backup...</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelBackupBtn" class="btn btn-outline">Cancel</button>
+                <button type="submit" form="createBackupForm" class="btn btn-primary">Create Backup</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Restore Modal -->
+    <div id="restoreModal" class="modal-dialog" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="restoreModalTitle">Restore Server</h3>
+                <button class="close-btn" id="closeRestoreModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="restoreServerId">
+                
+                <div class="form-group">
+                    <label for="backupSelect">Select Backup</label>
+                    <select id="backupSelect" class="form-control">
+                        <option value="">No backups available</option>
+                    </select>
+                </div>
+                
+                <div class="backup-details-container" id="selectedBackupDetails" style="display: none;">
+                    <h4>Backup Details</h4>
+                    <div class="backup-details-grid">
+                        <div class="detail-item">
+                            <label>Created:</label>
+                            <span id="selectedBackupDate">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Type:</label>
+                            <span id="selectedBackupType">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Size:</label>
+                            <span id="selectedBackupSize">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelRestoreBtn" class="btn btn-outline">Cancel</button>
+                <button type="button" id="restoreBackupBtn" class="btn btn-primary">Restore</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Restore Confirm Modal -->
+    <div id="restoreConfirmModal" class="modal-dialog" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Restore</h3>
+                <button class="close-btn" id="closeRestoreConfirmModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="restoreBackupId">
+                
+                <p>Are you sure you want to restore from this backup?</p>
+                <p>This will overwrite the current server configuration and data.</p>
+                
+                <div class="backup-details-container">
+                    <div class="backup-details-grid">
+                        <div class="detail-item">
+                            <label>Backup:</label>
+                            <span id="restoreBackupName">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Created:</label>
+                            <span id="restoreBackupDate">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Server:</label>
+                            <span id="restoreBackupServer">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="restoreConfig" checked> Restore configuration files
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="restoreData" checked> Restore data files
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="stopServerDuringRestore" checked> Stop server during restore
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="restoreProgressContainer" class="progress-container" style="display: none;">
+                    <h4>Restore Progress</h4>
+                    <div class="progress">
+                        <div id="restoreProgressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div id="restoreProgressMessage" class="progress-message">Preparing restore...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelRestoreConfirmBtn" class="btn btn-outline">Cancel</button>
+                <button type="button" id="confirmRestoreBtn" class="btn btn-warning">Restore</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Backup Manager Modal -->
+    <div id="backupManagerModal" class="modal-dialog" style="display: none;">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>Backup Manager</h3>
+                <button class="close-btn" id="closeBackupManagerModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-manager-controls">
+                    <div class="search-container">
+                        <input type="text" id="backupSearch" placeholder="Search backups...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="filter-container">
+                        <select id="backupFilter" class="form-control">
+                            <option value="all">All Backups</option>
+                            <option value="full">Full Backups</option>
+                            <option value="config">Configuration Backups</option>
+                            <option value="data">Data Backups</option>
+                        </select>
+                    </div>
+                    <button id="refreshBackupsBtn" class="btn btn-outline">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                    <button id="createBackupBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Backup
+                    </button>
+                </div>
+                
+                <div class="backup-list" id="backupList">
+                    <!-- Backup list items will be added here dynamically -->
+                    <div class="empty-message">No backups available</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Backup Details Modal -->
+    <div id="backupDetailsModal" class="modal-dialog" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Backup Details</h3>
+                <button class="close-btn" id="closeBackupDetailsModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-details-container">
+                    <div class="backup-details-grid">
+                        <div class="detail-item">
+                            <label>Name:</label>
+                            <span id="backupDetailsName">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Created:</label>
+                            <span id="backupDetailsDate">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Server:</label>
+                            <span id="backupDetailsServer">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Type:</label>
+                            <span id="backupDetailsType">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Size:</label>
+                            <span id="backupDetailsSize">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Status:</label>
+                            <span id="backupDetailsStatus">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="backup-items-container">
+                    <h4>Backup Contents</h4>
+                    <ul id="backupDetailsItems" class="backup-items-list">
+                        <!-- Backup items will be added here dynamically -->
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="closeBackupDetailsBtn" class="btn btn-outline">Close</button>
+                <button type="button" id="restoreFromDetailsBtn" class="btn btn-primary">Restore</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Container Modal -->
+    <div id="createContainerModal" class="modal-dialog" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Docker Container</h3>
+                <button class="close-btn" id="closeCreateContainerBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createContainerForm">
+                    <div class="form-group">
+                        <label for="containerName">Container Name</label>
+                        <input type="text" id="containerName" class="form-control" placeholder="e.g., mcp-brave-search" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="containerImage">Image</label>
+                        <input type="text" id="containerImage" class="form-control" placeholder="e.g., mcp/brave-search:latest" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Port Mappings</label>
+                        <div id="portMappingsContainer">
+                            <!-- Port mapping fields will be added here -->
+                        </div>
+                        <button type="button" id="addPortMappingBtn" class="btn btn-sm btn-outline">
+                            <i class="fas fa-plus"></i> Add Port Mapping
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Volume Mappings</label>
+                        <div id="volumeMappingsContainer">
+                            <!-- Volume mapping fields will be added here -->
+                        </div>
+                        <button type="button" id="addVolumeMappingBtn" class="btn btn-sm btn-outline">
+                            <i class="fas fa-plus"></i> Add Volume Mapping
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Environment Variables</label>
+                        <div id="envVarsContainer">
+                            <!-- Environment variable fields will be added here -->
+                        </div>
+                        <button type="button" id="addEnvVarBtn" class="btn btn-sm btn-outline">
+                            <i class="fas fa-plus"></i> Add Environment Variable
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" id="containerAutoStart" checked> Auto-start container after creation
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelCreateContainerBtn" class="btn btn-outline">Cancel</button>
+                <button type="submit" form="createContainerForm" class="btn btn-primary">Create Container</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Load scripts -->
-    <script src="js/config.js"></script>
-    <script src="js/ui-controller.js"></script>
-    <script src="js/template-manager.js"></script>
-    <script src="js/installation-manager.js"></script>
-    <script src="js/server-controller.js"></script>
-    <script src="js/logger.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/theme-manager.js"></script>
+    <script src="js/error-handler.js"></script>
+    <script src="js/logger.js"></script>
+    <script src="js/file-system-api.js"></script>
+    <script src="js/notification-manager.js"></script>
+    <script src="js/backup-logger.js"></script>
+    <script src="js/backup-manager.js"></script>
+    <script src="js/backup-ui.js"></script>
+    <script src="js/backup-restore-ui.js"></script>
+    <script src="js/backup-statistics.js"></script>
+    <script src="js/server-manager.js"></script>
+    <script src="js/server-updater.js"></script>
+    <script src="js/config-editor.js"></script>
+    <script src="js/log-viewer.js"></script>
+    <script src="js/docker-manager.js"></script>
+    <script src="js/docker-ui.js"></script>
+    <script src="js/backup-restore.js"></script>
+    <!-- Installer UI Modules -->
+    <script src="js/installer-ui-utils.js"></script>
+    <script src="js/installer-ui-docker.js"></script>
+    <script src="js/installer-ui-command.js"></script>
+    <script src="js/installer-ui-config.js"></script>
+    <script src="js/installer-ui-core.js"></script>
+    <script src="js/installer-ui-events.js"></script>
+    <script src="js/installer-ui-installation.js"></script>
+    <script src="js/installer-ui-templates.js"></script>
+    <script src="js/installer-ui-progress.js"></script>
     <script src="js/installer-ui.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

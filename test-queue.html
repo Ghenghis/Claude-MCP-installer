@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Installation Test</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .test-panel {
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .test-queue {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+        .queue-item-status {
+            font-weight: bold;
+        }
+        .status-pending { color: var(--info-color); }
+        .status-installing { color: var(--warning-color); }
+        .status-success { color: var(--success-color); }
+        .status-error { color: var(--error-color); }
+        .log-container {
+            background-color: var(--code-bg-color);
+            color: var(--code-color);
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .log-info { background-color: rgba(0, 123, 255, 0.1); }
+        .log-success { background-color: rgba(40, 167, 69, 0.1); }
+        .log-warning { background-color: rgba(255, 193, 7, 0.1); }
+        .log-error { background-color: rgba(220, 53, 69, 0.1); }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>Queue Installation Test</h1>
+            <p>Test the installation queue functionality with real repositories</p>
+        </div>
+        
+        <div class="test-panel">
+            <h2>Test Configuration</h2>
+            <div class="form-group">
+                <label for="installPath">Installation Path</label>
+                <input type="text" id="installPath" class="form-control" value="C:\Program Files\Claude Desktop MCP">
+            </div>
+            
+            <h3>Repositories</h3>
+            <div id="repoList">
+                <div class="queue-item">
+                    <div>
+                        <strong>Claude Server</strong>
+                        <div>https://github.com/davidteren/claude-server</div>
+                    </div>
+                    <div>
+                        <select class="method-select">
+                            <option value="npx">NPX</option>
+                            <option value="uv">UV</option>
+                            <option value="python">Python</option>
+                            <option value="docker">Docker</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary add-to-queue-btn">Add to Queue</button>
+                    </div>
+                </div>
+                <div class="queue-item">
+                    <div>
+                        <strong>JSON MCP Server</strong>
+                        <div>https://github.com/GongRzhe/JSON-MCP-Server</div>
+                    </div>
+                    <div>
+                        <select class="method-select">
+                            <option value="npx">NPX</option>
+                            <option value="uv">UV</option>
+                            <option value="python" selected>Python</option>
+                            <option value="docker">Docker</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary add-to-queue-btn">Add to Queue</button>
+                    </div>
+                </div>
+                <div class="queue-item">
+                    <div>
+                        <strong>MCP Installer</strong>
+                        <div>https://github.com/anaisbetts/mcp-installer</div>
+                    </div>
+                    <div>
+                        <select class="method-select">
+                            <option value="npx">NPX</option>
+                            <option value="uv" selected>UV</option>
+                            <option value="python">Python</option>
+                            <option value="docker">Docker</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary add-to-queue-btn">Add to Queue</button>
+                    </div>
+                </div>
+                <div class="queue-item">
+                    <div>
+                        <strong>MCP Marketplace</strong>
+                        <div>https://github.com/cline/mcp-marketplace</div>
+                    </div>
+                    <div>
+                        <select class="method-select">
+                            <option value="npx">NPX</option>
+                            <option value="uv">UV</option>
+                            <option value="python">Python</option>
+                            <option value="docker" selected>Docker</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary add-to-queue-btn">Add to Queue</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-panel">
+            <h2>Installation Queue</h2>
+            <div class="test-controls">
+                <button id="installQueueBtn" class="btn btn-primary" disabled>Install Queue</button>
+                <button id="clearQueueBtn" class="btn btn-outline" disabled>Clear Queue</button>
+                <button id="addAllBtn" class="btn btn-outline">Add All Repositories</button>
+            </div>
+            
+            <div id="queueContainer" class="test-queue">
+                <div class="empty-queue-message">Queue is empty. Add repositories to test installation.</div>
+            </div>
+        </div>
+        
+        <div class="test-panel">
+            <h2>Installation Log</h2>
+            <div id="logContainer" class="log-container"></div>
+        </div>
+    </div>
+    
+    <!-- Load scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/error-handler.js"></script>
+    <script src="js/theme-manager.js"></script>
+    <script src="js/installer.js"></script>
+    <script>
+        // Queue state
+        let installationQueue = [];
+        let isInstalling = false;
+        
+        // DOM elements
+        const installQueueBtn = document.getElementById('installQueueBtn');
+        const clearQueueBtn = document.getElementById('clearQueueBtn');
+        const addAllBtn = document.getElementById('addAllBtn');
+        const queueContainer = document.getElementById('queueContainer');
+        const logContainer = document.getElementById('logContainer');
+        const installPathInput = document.getElementById('installPath');
+        
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listeners
+            installQueueBtn.addEventListener('click', handleInstallQueue);
+            clearQueueBtn.addEventListener('click', clearQueue);
+            addAllBtn.addEventListener('click', addAllRepositories);
+            
+            // Add event listeners to "Add to Queue" buttons
+            document.querySelectorAll('.add-to-queue-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const queueItem = this.closest('.queue-item');
+                    const repoName = queueItem.querySelector('strong').textContent;
+                    const repoUrl = queueItem.querySelector('div > div').textContent;
+                    const methodId = queueItem.querySelector('.method-select').value;
+                    
+                    addToQueue(repoName, repoUrl, methodId);
+                });
+            });
+            
+            // Initialize theme
+            if (window.ThemeManager) {
+                window.ThemeManager.initializeTheme();
+            }
+        });
+        
+        /**
+         * Add a repository to the installation queue
+         */
+        function addToQueue(repoName, repoUrl, methodId) {
+            // Create queue item
+            const queueItem = {
+                id: generateId(),
+                repoName,
+                repoUrl,
+                methodId,
+                status: 'pending',
+                addedAt: new Date().toISOString()
+            };
+            
+            // Add to queue
+            installationQueue.push(queueItem);
+            
+            // Update UI
+            updateQueueUI();
+            
+            // Log
+            logMessage(`Added ${repoName} to queue with ${methodId} method`, 'info');
+        }
+        
+        /**
+         * Add all repositories to the queue
+         */
+        function addAllRepositories() {
+            document.querySelectorAll('.queue-item').forEach(item => {
+                const repoName = item.querySelector('strong').textContent;
+                const repoUrl = item.querySelector('div > div').textContent;
+                const methodId = item.querySelector('.method-select').value;
+                
+                // Check if already in queue
+                const exists = installationQueue.some(queueItem => queueItem.repoUrl === repoUrl);
+                if (!exists) {
+                    addToQueue(repoName, repoUrl, methodId);
+                }
+            });
+        }
+        
+        /**
+         * Clear the installation queue
+         */
+        function clearQueue() {
+            if (isInstalling) {
+                logMessage('Cannot clear queue while installation is in progress', 'error');
+                return;
+            }
+            
+            installationQueue = [];
+            updateQueueUI();
+            logMessage('Queue cleared', 'info');
+        }
+        
+        /**
+         * Update the queue UI
+         */
+        function updateQueueUI() {
+            // Clear container
+            queueContainer.innerHTML = '';
+            
+            // If queue is empty, show message
+            if (installationQueue.length === 0) {
+                queueContainer.innerHTML = '<div class="empty-queue-message">Queue is empty. Add repositories to test installation.</div>';
+                installQueueBtn.disabled = true;
+                clearQueueBtn.disabled = true;
+                return;
+            }
+            
+            // Enable buttons
+            installQueueBtn.disabled = isInstalling;
+            clearQueueBtn.disabled = isInstalling;
+            
+            // Add items to container
+            installationQueue.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'queue-item';
+                itemElement.innerHTML = `
+                    <div>
+                        <strong>${item.repoName}</strong>
+                        <div>${item.repoUrl}</div>
+                        <div>Method: ${item.methodId}</div>
+                    </div>
+                    <div class="queue-item-status status-${item.status}">
+                        ${getStatusText(item.status)}
+                        ${item.status === 'error' ? `<div class="error-message">${item.error || ''}</div>` : ''}
+                    </div>
+                `;
+                
+                queueContainer.appendChild(itemElement);
+            });
+        }
+        
+        /**
+         * Get status text
+         */
+        function getStatusText(status) {
+            switch (status) {
+                case 'pending': return 'Pending';
+                case 'installing': return 'Installing...';
+                case 'success': return 'Installed';
+                case 'error': return 'Failed';
+                default: return status;
+            }
+        }
+        
+        /**
+         * Handle the 'Install Queue' button click
+         */
+        async function handleInstallQueue() {
+            // Disable queue buttons during installation
+            setQueueButtonsState(true);
+            
+            // Get pending items
+            const pendingItems = installationQueue.filter(item => item.status === 'pending');
+            
+            if (pendingItems.length === 0) {
+                logMessage('No pending items in the queue.', 'info');
+                setQueueButtonsState(false);
+                return;
+            }
+            
+            logMessage(`Installing ${pendingItems.length} items from queue...`, 'info');
+            
+            // Create installer instance
+            const installer = new window.Installer({
+                installPath: installPathInput.value
+            });
+            
+            if (!installer) {
+                logMessage('Installer not found!', 'error');
+                pendingItems.forEach(item => {
+                    updateItemStatus(item.id, 'error', 'Installer not available');
+                });
+                setQueueButtonsState(false);
+                return;
+            }
+            
+            // Process each item sequentially
+            for (const item of pendingItems) {
+                await processQueueItem(item, installer);
+            }
+            
+            // Re-enable queue buttons
+            setQueueButtonsState(false);
+            
+            logMessage('Queue installation complete.', 'success');
+        }
+        
+        /**
+         * Process a single queue item installation
+         */
+        async function processQueueItem(item, installer) {
+            // Update status to installing
+            updateItemStatus(item.id, 'installing');
+            
+            try {
+                // Create log callback for this item
+                const logCallback = createItemLogCallback(item);
+                
+                // Start installation
+                logMessage(`Installing ${item.repoName}...`, 'info');
+                
+                // Call installer with repository URL
+                const result = await installer.installFromGitHub(
+                    item.repoUrl,
+                    { 
+                        logCallback,
+                        methodId: item.methodId,
+                        installPath: installPathInput.value
+                    }
+                );
+                
+                if (result.success) {
+                    updateItemStatus(item.id, 'success');
+                    logMessage(`Successfully installed ${item.repoName}`, 'success');
+                } else {
+                    updateItemStatus(item.id, 'error', result.error || 'Unknown error');
+                    logMessage(`Failed to install ${item.repoName}: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                updateItemStatus(item.id, 'error', error.message);
+                logMessage(`Error installing ${item.repoName}: ${error.message}`, 'error');
+            }
+        }
+        
+        /**
+         * Create a log callback for a queue item
+         */
+        function createItemLogCallback(item) {
+            return function(message, type = 'info') {
+                logMessage(`[${item.repoName}] ${message}`, type);
+            };
+        }
+        
+        /**
+         * Update a queue item's status
+         */
+        function updateItemStatus(id, status, error = null) {
+            const item = installationQueue.find(item => item.id === id);
+            if (item) {
+                item.status = status;
+                if (error) {
+                    item.error = error;
+                }
+                updateQueueUI();
+            }
+        }
+        
+        /**
+         * Set queue buttons state
+         */
+        function setQueueButtonsState(disabled) {
+            isInstalling = disabled;
+            installQueueBtn.disabled = disabled;
+            clearQueueBtn.disabled = disabled;
+            addAllBtn.disabled = disabled;
+        }
+        
+        /**
+         * Log a message to the log container
+         */
+        function logMessage(message, type = 'info') {
+            console.log(`[TEST] ${message}`);
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        /**
+         * Generate a random ID
+         */
+        function generateId() {
+            return Math.random().toString(36).substring(2, 11);
+        }
+    </script>
+</body>
+</html>
