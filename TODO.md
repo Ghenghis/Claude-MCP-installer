@@ -69,7 +69,7 @@ This file tracks planned features, improvements, and bug fixes for the Advanced 
     -   [x] Address lint warnings in installer-ui-installation.js
     -   [x] Address lint warnings in server-manager.js
 -   [x] **Refactor `updateClaudeConfig` (installer-ui.js):** Overhaul function for dynamic server registration, proper file system interaction (not just localStorage), and removal of hardcoded paths.
--   [~] **Modularize `installer-ui.js`:** Break down the large file into smaller, more focused modules if complexity continues to grow.
+-   [x] **Modularize `installer-ui.js`:** Break down the large file into smaller, more focused modules if complexity continues to grow.
     -   [x] Create installer-ui-url.js for URL-based installation functionality
-    -   [ ] Move remaining functions to appropriate modules
-    -   [ ] Update main file to be a lightweight coordinator
+    -   [x] Move remaining functions to appropriate modules
+    -   [x] Update main file to be a lightweight coordinator
