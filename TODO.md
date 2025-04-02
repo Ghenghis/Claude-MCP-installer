@@ -80,10 +80,10 @@ This file tracks planned features, improvements, and bug fixes for the Advanced 
     -   [x] Implement secure credential storage for MCP servers
     -   [x] Add HTTPS support for local server communication
     -   [x] Create permission management system for server access
--   [ ] **Performance Monitoring:**
-    -   [ ] Add real-time resource usage monitoring for servers
-    -   [ ] Implement performance optimization suggestions
-    -   [ ] Create historical performance tracking
+-   [x] **Performance Monitoring:**
+    -   [x] Add real-time resource usage monitoring for servers
+    -   [x] Implement performance optimization suggestions
+    -   [x] Create historical performance tracking
 -   [ ] **Advanced Configuration Management:**
     -   [ ] Develop configuration templates for common server types
     -   [ ] Add configuration validation and error checking
